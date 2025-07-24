@@ -41,7 +41,7 @@ function fetchOpenTickets() {
   }
 
   // ヘッダー行を追加
-  sheet.appendRow(['ID', 'タイトル', 'ステータス', '作成日']);
+  sheet.appendRow(['ID', 'タイトル', 'ステータス', '作成日', '更新日', 'チケット分類ID', 'ラベルID', '保留理由ID']);
 
   // チケット一覧をシートに出力（タイトルにリンクを追加）
   tickets.forEach(function(ticket, index) {
@@ -49,10 +49,14 @@ function fetchOpenTickets() {
     
     // 基本データを追加
     sheet.appendRow([
-      ticket.ticket_id,   // チケットID
-      ticket.title,       // タイトル（後でリッチテキストに変換）
-      ticket.status_cd,   // ステータス
-      ticket.created_at   // 作成日（ISO8601）
+      ticket.ticket_id,           // チケットID
+      ticket.title,               // タイトル（後でリッチテキストに変換）
+      ticket.status_cd,           // ステータス
+      ticket.created_at,          // 作成日（ISO8601）
+      ticket.last_updated_at,     // 更新日（ISO8601）
+      ticket.case_category_ids ? ticket.case_category_ids.join(', ') : '', // チケット分類ID（配列を文字列に変換）
+      ticket.label_ids ? ticket.label_ids.join(', ') : '',                 // ラベルID（配列を文字列に変換）
+      ticket.pending_reason_id || ''  // 保留理由ID
     ]);
     
     // チケットURLを生成（正しいre:lationのURL形式）
