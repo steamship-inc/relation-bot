@@ -1,6 +1,11 @@
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
-  ui.createMenu('🟩 re:lation') // メニュー名をわかりやすく調整
-    .addItem('未対応チケットを取得', 'fetchOpenTickets') // 項目名を具体的に変更
+  
+  // re:lationメニュー
+  ui.createMenu('🟩 re:lation')
+    .addItem('openチケット取得', 'fetchOpenTickets')
+    .addItem('closeチケット取得', 'fetchCloseTickets')
+    .addSeparator()
+    .addItem('メッセージボックス一覧取得', 'fetchMessageBoxes')
     .addToUi();
 }
