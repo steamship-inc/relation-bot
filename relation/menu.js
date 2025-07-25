@@ -9,4 +9,11 @@ function onOpen() {
     .addItem('メッセージボックス一覧取得', 'fetchMessageBoxes')
     .addItem('チケット分類一覧取得', 'fetchCaseCategories')
     .addToUi();
+
+  
+  // slack通知メニュー
+  ui.createMenu('🔔 Slack通知')
+    .addItem('Slack通知テスト', 'testSendSlack')
+    .addToUi();
 }
+
