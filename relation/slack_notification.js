@@ -310,7 +310,7 @@ function selectMunicipalityWithSearchableDialog(configs) {
           </div>
 
           <script>
-            var selectedMunicipalityId = null;
+            var selectedMunicipalityCode = null;
             var configs = ${JSON.stringify(configs)};
 
             function filterMunicipalities() {
@@ -355,11 +355,11 @@ function selectMunicipalityWithSearchableDialog(configs) {
               var selectedItem = document.querySelector('[data-id="' + municipalityId + '"]');
               if (selectedItem && !selectedItem.classList.contains('hidden')) {
                 selectedItem.classList.add('selected');
-                selectedMunicipalityId = municipalityId;
+                selectedMunicipalityCode = municipalityCode;
                 document.getElementById('confirmBtn').disabled = false;
                 
                 // 選択された自治体名を表示
-                var municipalityName = configs[municipalityId].name;
+                var municipalityName = configs[municipalityCode].name;
                 document.getElementById('confirmBtn').textContent = '「' + municipalityName + '」に送信';
               }
             }
@@ -425,10 +425,10 @@ function selectMunicipalityWithSearchableDialog(configs) {
 
 /**
  * HTMLダイアログからの選択結果を受け取る
- * @param {string} municipalityId 選択された自治体ID
+ * @param {string} municipalityCode 選択された自治体コード
  */
-function setSelectedMunicipality(municipalityId) {
-  PropertiesService.getScriptProperties().setProperty('selectedMunicipalityId', municipalityId);
+function setSelectedMunicipality(municipalityCode) {
+  PropertiesService.getScriptProperties().setProperty('selectedMunicipalityCode', municipalityCode);
 }
 
 /**
