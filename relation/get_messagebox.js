@@ -1,12 +1,10 @@
 // re:lation APIからメッセージボックス一覧を取得し、messageBoxシートに出力する
 function fetchMessageBoxes() {
-  var subdomain = 'steamship';
-
   // スクリプトプロパティからAPIキーを取得
-  var apiKey = PropertiesService.getScriptProperties().getProperty('RELATION_API_KEY');
+  var apiKey = getRelationApiKey();
 
   // メッセージボックス一覧APIのエンドポイント
-  var apiUrl = 'https://' + subdomain + '.relationapp.jp/api/v2/message_boxes';
+  var apiUrl = buildMessageBoxesUrl();
 
   // APIリクエスト（GET）
   var response = UrlFetchApp.fetch(apiUrl, {
@@ -20,13 +18,13 @@ function fetchMessageBoxes() {
   // レスポンス（JSON配列）をパース
   var messageBoxes = JSON.parse(response.getContentText());
 
-  // 出力先シート（messageBox）を取得・新規作成・クリア
+  // 出力先シート（📮messageBox）を取得・新規作成・クリア
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName('messageBox');
+  var sheet = ss.getSheetByName('📮messageBox');
 
   // シートがなければ新規作成、既存シートあればデータクリア
   if (!sheet) {
-    sheet = ss.insertSheet('messageBox');
+    sheet = ss.insertSheet('📮messageBox');
   } else {
     sheet.clear();
   }
@@ -48,7 +46,7 @@ function fetchMessageBoxes() {
     ]);
     
     // メッセージボックスURLを生成
-    var messageBoxUrl = 'https://' + subdomain + '.relationapp.jp/tickets/#/' + messageBox.message_box_id + '/tickets/open/p1';
+    var messageBoxUrl = getRelationBaseUrl() + '/tickets/#/' + messageBox.message_box_id + '/tickets/open/p1';
     
     // 受信箱名列（B列）にリッチテキストでリンクを設定
     var richText = SpreadsheetApp.newRichTextValue()

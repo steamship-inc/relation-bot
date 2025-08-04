@@ -1,13 +1,15 @@
 // re:lation APIからチケット分類一覧を取得し、caseCategoriesシートに出力する
 function fetchCaseCategories() {
-  var subdomain = 'steamship';
-  var messageBoxId = '629';
+  // 現在の自治体設定を取得（デフォルトは山鹿市）
+  var configs = getAllMunicipalityConfigs();
+  var config = configs['yamaga'];
+  var messageBoxId = config.messageBoxId;
 
   // スクリプトプロパティからAPIキーを取得
-  var apiKey = PropertiesService.getScriptProperties().getProperty('RELATION_API_KEY');
+  var apiKey = getRelationApiKey();
 
   // チケット分類一覧APIのエンドポイント
-  var apiUrl = 'https://' + subdomain + '.relationapp.jp/api/v2/' + messageBoxId + '/case_categories';
+  var apiUrl = buildCaseCategoriesUrl(messageBoxId);
 
   // クエリパラメータ（1ページ最大100件）
   var params = '?per_page=100&page=1';
@@ -24,13 +26,13 @@ function fetchCaseCategories() {
   // レスポンス（JSON配列）をパース
   var caseCategories = JSON.parse(response.getContentText());
 
-  // 出力先シート（caseCategories）を取得・新規作成・クリア
+  // 出力先シート（🏷️caseCategories）を取得・新規作成・クリア
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName('caseCategories');
+  var sheet = ss.getSheetByName('🏷️caseCategories');
 
   // シートがなければ新規作成、既存シートあればデータクリア
   if (!sheet) {
-    sheet = ss.insertSheet('caseCategories');
+    sheet = ss.insertSheet('🏷️caseCategories');
   } else {
     sheet.clear();
   }
@@ -52,5 +54,5 @@ function fetchCaseCategories() {
   });
 
   // 取得件数をログ出力
-  console.log('チケット分類 ' + caseCategories.length + ' 件を取得しました');
+  console.log(config.name + ' - チケット分類 ' + caseCategories.length + ' 件を取得しました');
 }
