@@ -18,174 +18,223 @@ function fetchMessageBoxes() {
   // レスポンス（JSON配列）をパース
   var messageBoxes = JSON.parse(response.getContentText());
 
-  // 自治体設定シートを取得
+  // 🏛️自治体設定シートを取得・更新
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var configSheet = ss.getSheetByName('🏛️自治体設定') || ss.getSheetByName('自治体設定');
 
   if (!configSheet) {
-    // 自治体設定シートがない場合は作成
-    console.log('自治体設定シートが見つかりません。初期化します。');
+    // 設定シートがない場合は作成
+    console.log('自治体設定シートが見つかりません。新規作成します。');
     createMunicipalityConfigSheet();
     configSheet = ss.getSheetByName('🏛️自治体設定');
   }
 
-  // 既存データを取得
   var data = configSheet.getDataRange().getValues();
   var headers = data[0];
   
-  console.log('取得したメッセージボックス数: ' + messageBoxes.length);
+  // ヘッダー行の確認（必要に応じて修正）
+  if (headers.length < 4 || headers[1] !== '自治体名' || headers[3] !== 'メッセージボックスID') {
+    console.log('自治体設定シートのヘッダーを確認・修正します。');
+    var correctHeaders = [
+      '自治体ID',
+      '自治体名', 
+      '都道府県',
+      'メッセージボックスID',
+      'Slackチャンネル',
+      'Slack通知テンプレート(JSON)',
+      'Slack通知フィルタ(JSON)'
+    ];
+    configSheet.getRange(1, 1, 1, correctHeaders.length).setValues([correctHeaders]);
+  }
+
+  // 既存データの行数を確認
+  var existingRowCount = data.length;
   
-  // メッセージボックス情報で自治体設定シートを更新
+  // コード表からのマッピング用データを事前に読み込み
+  var codeTableMap = loadCodeTableMap();
+  
+  // メッセージボックス一覧を自治体設定シートに追加・更新
   messageBoxes.forEach(function(messageBox, index) {
-    var messageBoxId = messageBox.message_box_id;
-    var municipalityName = messageBox.name;
+    var rowIndex = index + 2; // ヘッダー行の次から開始（1ベース）
     
-    // 既存の行を検索（D列のメッセージボックスIDで照合）
-    var existingRowIndex = -1;
-    for (var i = 1; i < data.length; i++) {
-      if (data[i][3] === messageBoxId) { // D列（メッセージボックスID）で照合
-        existingRowIndex = i + 1; // シート上の行番号（1ベース）
-        break;
-      }
+    // 既存行の範囲を超える場合は新しい行を追加
+    if (rowIndex > existingRowCount) {
+      configSheet.appendRow(['', '', '', '', '', '', '']);
     }
     
-    if (existingRowIndex > 0) {
-      // 既存行を更新：B列（自治体名）とD列（メッセージボックスID）を更新
-      configSheet.getRange(existingRowIndex, 2).setValue(municipalityName); // B列：自治体名
-      configSheet.getRange(existingRowIndex, 4).setValue(messageBoxId);     // D列：メッセージボックスID
-      console.log('更新: ' + municipalityName + ' (ID: ' + messageBoxId + ')');
+    // 自治体名からコード表で都道府県名と団体コードを検索
+    var municipalityName = messageBox.name;
+    var codeInfo = findMunicipalityInCodeTable(municipalityName, codeTableMap);
+    
+    // A列（自治体ID/団体コード）を設定
+    if (codeInfo.code) {
+      // コード表で見つかった場合は団体コードを設定
+      configSheet.getRange(rowIndex, 1).setValue(codeInfo.code);
     } else {
-      // 新規行を追加
-      var newRowIndex = configSheet.getLastRow() + 1;
-      
-      // 自治体名から自治体コードを取得
-      var municipalityCode = getMunicipalityCode(municipalityName);
-      
-      configSheet.getRange(newRowIndex, 1).setValue(municipalityCode);      // A列：自治体コード
-      configSheet.getRange(newRowIndex, 2).setValue(municipalityName);      // B列：自治体名
-      configSheet.getRange(newRowIndex, 3).setValue('');                    // C列：都道府県（空）
-      configSheet.getRange(newRowIndex, 4).setValue(messageBoxId);          // D列：メッセージボックスID
-      configSheet.getRange(newRowIndex, 5).setValue('');                    // E列：Slackチャンネル（空）
-      configSheet.getRange(newRowIndex, 6).setValue('');                    // F列：Slack通知テンプレート（空）
-      configSheet.getRange(newRowIndex, 7).setValue('');                    // G列：Slack通知フィルタ（空）
-      
-      console.log('新規追加: ' + municipalityName + ' (コード: ' + municipalityCode + ', ID: ' + messageBoxId + ')');
+      // コード表で見つからない場合は空にする
+      configSheet.getRange(rowIndex, 1).setValue('');
+      console.log('警告: ' + municipalityName + ' のコードが見つからないため、A列を空にしました');
+    }
+    
+    // B列（自治体名）を更新
+    configSheet.getRange(rowIndex, 2).setValue(municipalityName);
+    
+    // C列（都道府県名）を設定
+    if (codeInfo.prefecture) {
+      configSheet.getRange(rowIndex, 3).setValue(codeInfo.prefecture);
+    }
+    
+    // D列（メッセージボックスID）を更新
+    configSheet.getRange(rowIndex, 4).setValue(messageBox.message_box_id);
+    
+    // メッセージボックスURLを生成して自治体名列（B列）にリンクを設定
+    var messageBoxUrl = getRelationBaseUrl() + '/tickets/#/' + messageBox.message_box_id + '/tickets/open/p1';
+    var richText = SpreadsheetApp.newRichTextValue()
+      .setText(municipalityName)
+      .setLinkUrl(messageBoxUrl)
+      .build();
+    
+    configSheet.getRange(rowIndex, 2).setRichTextValue(richText);
+    
+    // ログ出力
+    if (codeInfo.code && codeInfo.prefecture) {
+      console.log('✓ ' + municipalityName + ' -> コード: ' + codeInfo.code + ', 都道府県: ' + codeInfo.prefecture);
+    } else {
+      console.log('⚠ ' + municipalityName + ' -> コード表で見つかりませんでした');
     }
   });
 
   // 取得件数をログ出力
-  console.log('自治体設定シートの更新が完了しました（' + messageBoxes.length + ' 件処理）');
+  console.log('自治体設定シート ' + messageBoxes.length + ' 件を更新しました');
+  
+  // 処理完了をUIで通知
+  var message = 'メッセージボックス一覧取得が完了しました。\n\n' +
+                '- メッセージボックス取得: ' + messageBoxes.length + ' 件\n' +
+                '- 自治体設定シートを更新\n' +
+                '- コード表から団体コード・都道府県名を設定';
+  
+  SpreadsheetApp.getUi().alert('取得完了', message, SpreadsheetApp.getUi().Button.OK);
 }
 
 /**
- * 自治体名から自治体コードを取得する
- * @param {string} municipalityName 自治体名
- * @return {string} 自治体コード（取得できない場合はフォールバック値）
+ * コード表からマッピング用データを読み込み
+ * @return {Array} コード表のデータ配列
  */
-function getMunicipalityCode(municipalityName) {
+function loadCodeTableMap() {
   try {
-    // 国土交通省 自治体コードAPI（GraphQL）
-    var apiUrl = 'https://www.mlit-data.jp/api/graphql';
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var codeSheet = ss.getSheetByName('コード表');
     
-    // GraphQLクエリ：全市区町村を取得して名前で検索
-    var query = {
-      query: `
-        query {
-          municipalities {
-            code
-            name
-            prefecture_code
-          }
-        }
-      `
-    };
-    
-    var response = UrlFetchApp.fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      payload: JSON.stringify(query),
-      muteHttpExceptions: true
-    });
-    
-    if (response.getResponseCode() === 200) {
-      var result = JSON.parse(response.getContentText());
-      
-      if (result && result.data && result.data.municipalities) {
-        // 自治体名で検索
-        var municipalities = result.data.municipalities;
-        
-        for (var i = 0; i < municipalities.length; i++) {
-          var municipality = municipalities[i];
-          
-          // 完全一致または部分一致で検索
-          if (municipality.name === municipalityName || 
-              municipality.name.indexOf(municipalityName) !== -1 ||
-              municipalityName.indexOf(municipality.name) !== -1) {
-            
-            var municipalityCode = municipality.code.toString();
-            console.log('自治体コード取得成功: ' + municipalityName + ' → ' + municipality.name + ' (' + municipalityCode + ')');
-            return municipalityCode;
-          }
-        }
-      }
-    } else {
-      console.log('自治体コードAPI HTTPエラー: ' + response.getResponseCode());
+    if (!codeSheet) {
+      console.log('コード表シートが見つかりません');
+      return [];
     }
     
-    console.log('自治体コードAPI: ' + municipalityName + 'の結果が見つかりません');
+    var codeData = codeSheet.getDataRange().getValues();
+    if (codeData.length <= 1) {
+      console.log('コード表にデータがありません');
+      return [];
+    }
+    
+    console.log('コード表から ' + (codeData.length - 1) + ' 件のデータを読み込みました');
+    return codeData;
     
   } catch (error) {
-    console.error('自治体コードAPI取得エラー: ' + error.toString());
+    console.error('コード表読み込みエラー: ' + error.toString());
+    return [];
   }
-  
-  // フォールバック：自治体名から推測したコードを生成
-  var fallbackCode = generateFallbackMunicipalityCode(municipalityName);
-  console.log('フォールバック自治体コード: ' + municipalityName + ' → ' + fallbackCode);
-  return fallbackCode;
 }
 
 /**
- * 自治体名からフォールバック用の自治体コードを生成
+ * 自治体名をキーにコード表から団体コードと都道府県名を検索
+ * 処理の流れ：自治体名→都道府県名（コード表より）→自治体コード（コード表より）
  * @param {string} municipalityName 自治体名
- * @return {string} フォールバック自治体コード
+ * @param {Array} codeTableMap コード表データ
+ * @return {Object} {code: 団体コード, prefecture: 都道府県名}
  */
-function generateFallbackMunicipalityCode(municipalityName) {
-  // 既知の自治体のマッピング（手動で追加可能）
-  var knownMunicipalities = {
-    '山鹿市': '432113',
-    '福岡市': '401307', 
-    '熊本市': '431001',
-    '札幌市': '011002',
-    '厚真町': '015814',
-    '西海市': '422134'  // 西海市を追加
-  };
-  
-  if (knownMunicipalities[municipalityName]) {
-    return knownMunicipalities[municipalityName];
+function findMunicipalityInCodeTable(municipalityName, codeTableMap) {
+  if (!codeTableMap || codeTableMap.length <= 1) {
+    return {code: null, prefecture: null};
   }
   
-  // 不明な場合は 'temp_' + 自治体名をベースにした一意ID
-  var sanitized = municipalityName.replace(/[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '');
-  var hash = hashString(sanitized);
-  return 'temp_' + Math.abs(hash).toString().substring(0, 6);
-}
-
-/**
- * 文字列のハッシュ値を計算
- * @param {string} str ハッシュ化する文字列
- * @return {number} ハッシュ値
- */
-function hashString(str) {
-  var hash = 0;
-  if (str.length === 0) return hash;
+  console.log('検索開始: ' + municipalityName);
   
-  for (var i = 0; i < str.length; i++) {
-    var char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // 32bit整数に変換
+  // ステップ1: 自治体名から都道府県名を取得
+  var prefecture = null;
+  
+  // まず、自治体名で完全一致検索して都道府県名を取得
+  for (var i = 1; i < codeTableMap.length; i++) {
+    var row = codeTableMap[i];
+    var rowMunicipalityName = row[2]; // C列: 市区町村名
+    
+    if (rowMunicipalityName === municipalityName) {
+      prefecture = row[1]; // B列: 都道府県名
+      console.log('ステップ1完了（完全一致）: ' + municipalityName + ' -> ' + prefecture);
+      break;
+    }
   }
   
-  return hash;
+  // 完全一致しない場合、部分一致で都道府県名を検索
+  if (!prefecture) {
+    for (var i = 1; i < codeTableMap.length; i++) {
+      var row = codeTableMap[i];
+      var rowMunicipalityName = row[2]; // C列: 市区町村名
+      
+      // 自治体名が部分的に含まれているかチェック
+      if (rowMunicipalityName && municipalityName && 
+          (rowMunicipalityName.includes(municipalityName) || municipalityName.includes(rowMunicipalityName))) {
+        prefecture = row[1]; // B列: 都道府県名
+        console.log('ステップ1完了（部分一致）: ' + municipalityName + ' -> ' + prefecture);
+        break;
+      }
+    }
+  }
+  
+  // 都道府県名が見つからない場合
+  if (!prefecture) {
+    console.log('ステップ1失敗: ' + municipalityName + ' の都道府県名が見つかりませんでした');
+    return {code: null, prefecture: null};
+  }
+  
+  // ステップ2: 自治体名と都道府県名の両方をキーに団体コードを取得
+  var municipalityCode = null;
+  
+  for (var i = 1; i < codeTableMap.length; i++) {
+    var row = codeTableMap[i];
+    var rowMunicipalityName = row[2]; // C列: 市区町村名
+    var rowPrefecture = row[1]; // B列: 都道府県名
+    
+    // 自治体名と都道府県名の両方が一致するかチェック
+    if (rowMunicipalityName === municipalityName && rowPrefecture === prefecture) {
+      municipalityCode = row[0]; // A列: 団体コード
+      console.log('ステップ2完了（完全一致）: ' + municipalityName + ' + ' + prefecture + ' -> ' + municipalityCode);
+      break;
+    }
+  }
+  
+  // 完全一致しない場合、自治体名の部分一致で団体コードを検索
+  if (!municipalityCode) {
+    for (var i = 1; i < codeTableMap.length; i++) {
+      var row = codeTableMap[i];
+      var rowMunicipalityName = row[2]; // C列: 市区町村名
+      var rowPrefecture = row[1]; // B列: 都道府県名
+      
+      // 都道府県が一致し、自治体名が部分的に含まれているかチェック
+      if (rowPrefecture === prefecture && rowMunicipalityName && municipalityName && 
+          (rowMunicipalityName.includes(municipalityName) || municipalityName.includes(rowMunicipalityName))) {
+        municipalityCode = row[0]; // A列: 団体コード
+        console.log('ステップ2完了（部分一致）: ' + municipalityName + ' + ' + prefecture + ' -> ' + municipalityCode);
+        break;
+      }
+    }
+  }
+  
+  // 団体コードが見つからない場合
+  if (!municipalityCode) {
+    console.log('ステップ2失敗: ' + municipalityName + ' + ' + prefecture + ' の団体コードが見つかりませんでした');
+    return {code: null, prefecture: prefecture}; // 都道府県名は返す
+  }
+  
+  console.log('検索完了: ' + municipalityName + ' -> コード: ' + municipalityCode + ', 都道府県: ' + prefecture);
+  return {code: municipalityCode, prefecture: prefecture};
 }
