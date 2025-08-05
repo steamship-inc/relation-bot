@@ -283,3 +283,6 @@ function getDefaultMunicipalityData(defaultSlackTemplate, defaultSlackFilter) {
 }
 
 
+
+
+
