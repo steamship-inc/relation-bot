@@ -355,22 +355,22 @@ function selectMunicipalityWithSearchableDialog(configs) {
               var selectedItem = document.querySelector('[data-id="' + municipalityId + '"]');
               if (selectedItem && !selectedItem.classList.contains('hidden')) {
                 selectedItem.classList.add('selected');
-                selectedMunicipalityCode = municipalityCode;
+                selectedMunicipalityCode = municipalityId;
                 document.getElementById('confirmBtn').disabled = false;
                 
                 // 選択された自治体名を表示
-                var municipalityName = configs[municipalityCode].name;
+                var municipalityName = configs[municipalityId].name;
                 document.getElementById('confirmBtn').textContent = '「' + municipalityName + '」に送信';
               }
             }
 
             function confirmSelection() {
-              if (selectedMunicipalityId) {
+              if (selectedMunicipalityCode) {
                 google.script.run
                   .withSuccessHandler(function() {
                     google.script.host.close();
                   })
-                  .setSelectedMunicipality(selectedMunicipalityId);
+                  .setSelectedMunicipality(selectedMunicipalityCode);
               }
             }
 
@@ -398,7 +398,7 @@ function selectMunicipalityWithSearchableDialog(configs) {
       .setHeight(500);
     
     // 選択結果を保存するためのプロパティをリセット
-    PropertiesService.getScriptProperties().deleteProperty('selectedMunicipalityId');
+    PropertiesService.getScriptProperties().deleteProperty('selectedMunicipalityCode');
     
     SpreadsheetApp.getUi().showModalDialog(htmlOutput, '自治体選択');
     
@@ -407,9 +407,9 @@ function selectMunicipalityWithSearchableDialog(configs) {
     
     // 最大30秒間、選択結果を待機
     for (var i = 0; i < 30; i++) {
-      var selectedId = PropertiesService.getScriptProperties().getProperty('selectedMunicipalityId');
+      var selectedId = PropertiesService.getScriptProperties().getProperty('selectedMunicipalityCode');
       if (selectedId) {
-        PropertiesService.getScriptProperties().deleteProperty('selectedMunicipalityId');
+        PropertiesService.getScriptProperties().deleteProperty('selectedMunicipalityCode');
         return configs[selectedId] || null;
       }
       Utilities.sleep(1000);
