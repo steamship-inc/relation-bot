@@ -78,12 +78,41 @@ function manualSendSlack() {
     console.log('チケット件数: ' + tickets.length);
     console.log('送信先: ' + selectedConfig.slackChannel);
     
-    sendSlack(tickets, selectedConfig);
+    var sendResult = sendSlack(tickets, selectedConfig);
     
-    ui.alert('送信完了', 
-             '「' + selectedConfig.name + '」のopenチケット ' + tickets.length + '件を送信しました。\n' +
-             '送信先: ' + selectedConfig.slackChannel, 
-             ui.ButtonSet.OK);
+    // 送信結果に応じて適切なメッセージを表示
+    if (sendResult && sendResult.success) {
+      ui.alert('送信完了', 
+               '「' + selectedConfig.name + '」のopenチケット ' + tickets.length + '件の送信に成功しました。\n' +
+               '送信先: ' + selectedConfig.slackChannel, 
+               ui.ButtonSet.OK);
+    } else {
+      // 送信失敗の詳細を表示
+      var errorMessage = '「' + selectedConfig.name + '」のSlack通知送信に失敗しました。\n\n';
+      errorMessage += '送信先: ' + selectedConfig.slackChannel + '\n';
+      
+      if (sendResult && sendResult.error) {
+        errorMessage += 'エラー詳細: ' + sendResult.error + '\n';
+        if (sendResult.errorResponse) {
+          errorMessage += 'Slack APIレスポンス: ' + JSON.stringify(sendResult.errorResponse) + '\n';
+        }
+      }
+      
+      errorMessage += '\n対処方法:\n';
+      errorMessage += '1) ボットがチャンネルに招待されているか確認\n';
+      errorMessage += '2) チャンネル名が正確か確認\n';
+      errorMessage += '3) Bot Tokenが有効か確認';
+      
+      ui.alert('送信失敗', errorMessage, ui.ButtonSet.OK);
+      
+      console.error('=== Slack送信失敗詳細 ===');
+      console.error('自治体: ' + selectedConfig.name);
+      console.error('送信先: ' + selectedConfig.slackChannel);
+      if (sendResult) {
+        console.error('エラー: ' + (sendResult.error || '不明'));
+        console.error('レスポンス: ' + JSON.stringify(sendResult.errorResponse || {}));
+      }
+    }
              
   } catch (error) {
     console.error('Slack手動送信エラー: ' + error.toString());
@@ -478,17 +507,25 @@ function sendSlack(tickets, config) {
   
   if (!slackBotToken) {
     console.log('SLACK_BOT_TOKENが設定されていません。スクリプトプロパティに設定してください。');
-    return;
+    return {
+      success: false,
+      message: 'SLACK_BOT_TOKENが設定されていません。スクリプトプロパティに設定してください。',
+      error: 'token_not_configured'
+    };
   }
 
   // 設定が渡されていない場合はエラー
   if (!config) {
     console.log('自治体設定が指定されていません');
-    return;
+    return {
+      success: false,
+      message: '自治体設定が指定されていません',
+      error: 'config_not_provided'
+    };
   }
   
   console.log('Bot Token使用: ' + config.slackChannel + ' に送信');
-  sendWithBotToken(tickets, config, slackBotToken);
+  return sendWithBotToken(tickets, config, slackBotToken);
 }
 
 /**
@@ -497,12 +534,101 @@ function sendSlack(tickets, config) {
 function sendWithBotToken(tickets, config, botToken) {
   var message = createSlackMessage(tickets, config);
   
+  console.log('=== Slack送信デバッグ ===');
+  console.log('送信先チャンネル: ' + config.slackChannel);
+  console.log('メッセージ内容: ' + message);
+  console.log('Bot Token長さ: ' + (botToken ? botToken.length : 'なし'));
+  console.log('Bot Token開始文字: ' + (botToken ? botToken.substring(0, 10) + '...' : 'なし'));
+  
+  // デバッグ用alert（一時的）
+  SpreadsheetApp.getUi().alert('デバッグ', 
+    'Slack送信開始\n' +
+    '送信先: ' + config.slackChannel + '\n' +
+    'Bot Token長さ: ' + (botToken ? botToken.length : 'なし'), 
+    SpreadsheetApp.getUi().ButtonSet.OK);
+  
+  // チャンネル名をそのまま使用（#付きも対応）
+  var channelName = config.slackChannel;
+  
+  // 送信先の種類を判定してログ出力
+  var channelType = '';
+  if (channelName.startsWith('U')) {
+    channelType = 'ユーザーID（DM送信）';
+  } else if (channelName.startsWith('C')) {
+    channelType = 'チャンネルID';
+  } else if (channelName.startsWith('D')) {
+    channelType = 'DMチャンネルID';
+  } else if (channelName.startsWith('G')) {
+    channelType = 'グループDMチャンネルID';
+  } else if (channelName.startsWith('#')) {
+    channelType = 'チャンネル名（#付き）';
+  } else {
+    // 日本語チャンネル名の場合の処理
+    var hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(channelName);
+    if (hasJapanese) {
+      channelType = '日本語チャンネル名';
+    } else {
+      channelType = '英語チャンネル名';
+    }
+  }
+  
+  console.log('送信先タイプ: ' + channelType);
+  console.log('送信先値: "' + channelName + '"');
+  console.log('送信先文字数: ' + channelName.length);
+  
+  // チャンネル名をそのまま使用して送信
+  var result = attemptSlackSend(channelName, message, botToken, channelType);
+  
+  // 結果をalertで表示（一時的）
+  if (result.success) {
+    SpreadsheetApp.getUi().alert('送信成功', 
+      '送信先タイプ: ' + channelType + '\n' +
+      '送信結果: 成功\n' +
+      '詳細: ' + result.message, 
+      SpreadsheetApp.getUi().ButtonSet.OK);
+  } else {
+    SpreadsheetApp.getUi().alert('送信失敗', 
+      '送信先タイプ: ' + channelType + '\n' +
+      '送信結果: 失敗\n' +
+      'エラー: ' + result.error + '\n' +
+      '詳細: ' + result.message, 
+      SpreadsheetApp.getUi().ButtonSet.OK);
+  }
+  
+  return result;
+}
+
+/**
+ * Slack送信を試行する内部関数
+ * @param {string} channel チャンネル名
+ * @param {string} message メッセージ
+ * @param {string} botToken ボットトークン
+ * @param {string} description 試行の説明
+ * @return {boolean} 送信成功かどうか
+ */
+function attemptSlackSend(channel, message, botToken, description) {
+  console.log('=== attemptSlackSend デバッグ開始 ===');
+  console.log('チャンネル: "' + channel + '"');
+  console.log('説明: ' + description);
+  console.log('メッセージ長: ' + message.length);
+  console.log('ボットトークン存在: ' + (botToken ? 'あり' : 'なし'));
+  
+  // デバッグ用alert（一時的）
+  SpreadsheetApp.getUi().alert('API呼び出し開始', 
+    'チャンネル: ' + channel + '\n' +
+    'タイプ: ' + description + '\n' +
+    'Token存在: ' + (botToken ? 'あり' : 'なし'), 
+    SpreadsheetApp.getUi().ButtonSet.OK);
+  
   var payload = {
-    channel: config.slackChannel,
+    channel: channel,
     text: message
   };
+  
+  console.log('送信ペイロード: ' + JSON.stringify(payload));
 
   try {
+    console.log('Slack API呼び出し開始...');
     var response = UrlFetchApp.fetch('https://slack.com/api/chat.postMessage', {
       method: 'POST',
       headers: {
@@ -512,14 +638,56 @@ function sendWithBotToken(tickets, config, botToken) {
       payload: JSON.stringify(payload)
     });
     
+    console.log('Slack API レスポンス受信完了');
+    console.log('レスポンス ステータス: ' + response.getResponseCode());
+    console.log('レスポンス ヘッダー: ' + JSON.stringify(response.getHeaders()));
+    
     var result = JSON.parse(response.getContentText());
+    console.log('Slack API レスポンス (' + description + '): ' + JSON.stringify(result));
+    
+    // 結果をalertで表示（一時的）
+    SpreadsheetApp.getUi().alert('API結果', 
+      'ステータス: ' + response.getResponseCode() + '\n' +
+      'OK: ' + (result.ok ? 'true' : 'false') + '\n' +
+      'エラー: ' + (result.error || 'なし') + '\n' +
+      'チャンネル: ' + channel, 
+      SpreadsheetApp.getUi().ButtonSet.OK);
+    
     if (result.ok) {
-      console.log('Slack通知を送信しました（Bot Token - 送信先: ' + config.slackChannel + '）');
+      console.log('✅ Slack通知送信成功（' + description + ' - 送信先: ' + channel + '）');
+      return {
+        success: true,
+        message: 'Slack通知送信成功',
+        details: result
+      };
     } else {
       console.error('Bot Token送信エラー: ' + result.error);
+      var errorMessage = 'Slack送信エラー: ' + result.error;
+      
+      // エラーに応じた詳細メッセージを追加
+      if (result.error === 'not_in_channel') {
+        errorMessage += '\n\n対処法: ボットをチャンネルに招待してください。\n1. Slackでチャンネルを開く\n2. /invite @re:lation Bot を実行\n3. またはチャンネル設定からメンバーに追加';
+      } else if (result.error === 'channel_not_found') {
+        errorMessage += '\n\n対処法: チャンネル名を確認してください。\n- チャンネル名は正確に入力してください\n- プライベートチャンネルの場合は、ボットが招待されている必要があります';
+      } else if (result.error === 'invalid_auth') {
+        errorMessage += '\n\n対処法: Bot Tokenを確認してください。\n- スクリプトプロパティのSLACK_BOT_TOKENが正しく設定されているか確認\n- Tokenの有効期限が切れていないか確認';
+      }
+      
+      return {
+        success: false,
+        message: errorMessage,
+        error: result.error,
+        details: result
+      };
     }
   } catch (error) {
     console.error('Bot Token送信失敗: ' + error.toString());
+    return {
+      success: false,
+      message: 'Slack API呼び出しでエラーが発生しました: ' + error.toString(),
+      error: 'api_call_failed',
+      details: { error: error.toString() }
+    };
   }
 }
 
@@ -629,4 +797,17 @@ function getSlackMessageTemplate(config) {
 function formatDate(isoString) {
   var date = new Date(isoString);
   return Utilities.formatDate(date, 'Asia/Tokyo', 'MM/dd HH:mm');
+}
+
+/**
+ * チケット詳細URLを生成
+ * @param {string} messageBoxId メッセージボックスID
+ * @param {string} ticketId チケットID
+ * @param {string} status チケットステータス（'open' または 'closed'）
+ * @return {string} チケット詳細URL
+ */
+function buildTicketUrl(messageBoxId, ticketId, status) {
+  status = status || 'open';
+  var RELATION_BASE_URL = 'https://steamship.relation.biz';
+  return RELATION_BASE_URL + '/tickets/#/' + messageBoxId + '/tickets/' + status + '/p1/' + ticketId + '?order=desc&order_by';
 }
