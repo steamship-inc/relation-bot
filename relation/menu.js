@@ -11,7 +11,7 @@ function onOpen() {
     .addItem('全自治体 openチケット取得', 'fetchAllMunicipalitiesOpenTickets')
     .addSeparator()
     .addItem('📮受信箱一覧更新', 'fetchMessageBoxes')
-    .addItem('🎫ケット分類一覧取得', 'fetchCaseCategories')
+    .addItem('🎫チケット一覧取得', 'fetchCaseCategories')
     .addToUi();
 
   // slack通知メニュー
