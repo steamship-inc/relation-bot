@@ -71,11 +71,6 @@ function loadMunicipalityConfigFromSheet() {
   
   console.log('スプレッドシートから ' + Object.keys(configs).length + ' 件の自治体設定を読み込みました');
   
-  // デバッグ用：設定内容をログ出力
-  for (var id in configs) {
-    console.log('自治体ID: ' + id + ', Slackチャンネル: ' + configs[id].slackChannel);
-  }
-  
   return configs;
 }
 
