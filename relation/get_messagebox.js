@@ -113,7 +113,8 @@ function fetchMessageBoxes() {
                 '- 自治体設定シートを更新\n' +
                 '- コード表から団体コード・都道府県名を設定';
   
-  SpreadsheetApp.getUi().alert('取得完了', message, SpreadsheetApp.getUi().Button.OK);
+  var ui = SpreadsheetApp.getUi();
+  ui.alert('取得完了', message, ui.ButtonSet.OK);
 }
 
 /**
