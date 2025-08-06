@@ -52,9 +52,11 @@ function loadMunicipalityConfigFromSheet() {
     var municipalityId = row[0];
     var slackChannel = row[4] || '';
     
-    // Slackチャンネル設定のバリデーション
+    // Slackチャンネル設定のチェック
     if (!slackChannel.trim()) {
-      throw new Error('自治体「' + (row[1] || municipalityId) + '」のSlack通知先チャンネルが未設定です。設定シートで設定してください。');
+      // 手動送信では未設定の自治体をスキップ（エラーにしない）
+      console.log('Slackチャンネル未設定のためスキップ: ' + (row[1] || municipalityId));
+      continue;
     }
     
     configs[municipalityId] = {
