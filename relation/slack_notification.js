@@ -763,7 +763,7 @@ function formatDate(isoString) {
 
 /**
  * チケット詳細URLを生成
- * @param {string} messageBoxId メッセージボックスID
+ * @param {string} messageBoxId 受信箱ID
  * @param {string} ticketId チケットID
  * @param {string} status チケットステータス（'open' または 'closed'）
  * @return {string} チケット詳細URL

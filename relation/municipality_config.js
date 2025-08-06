@@ -109,7 +109,7 @@ function createMunicipalityConfigSheet() {
     '自治体ID',
     '自治体名', 
     '都道府県',
-    'メッセージボックスID',
+    '受信箱ID',
     'Slackチャンネル',
     'Slack通知テンプレート(JSON)',
     'Slack通知フィルタ(JSON)'
@@ -139,7 +139,7 @@ function createMunicipalityConfigSheet() {
   configSheet.setColumnWidth(1, 100); // 自治体ID
   configSheet.setColumnWidth(2, 120); // 自治体名
   configSheet.setColumnWidth(3, 100); // 都道府県
-  configSheet.setColumnWidth(4, 150); // メッセージボックスID
+  configSheet.setColumnWidth(4, 150); // 受信箱ID
   configSheet.setColumnWidth(5, 150); // Slackチャンネル
   configSheet.setColumnWidth(6, 500); // Slack通知テンプレートJSON
   configSheet.setColumnWidth(7, 400); // Slack通知フィルタJSON
@@ -202,7 +202,7 @@ function getMunicipalityDataFromSheet(defaultSlackTemplate, defaultSlackFilter) 
     var idIndex = findColumnIndex(headers, ['自治体ID', 'id', 'municipality_id']);
     var nameIndex = findColumnIndex(headers, ['自治体名', 'name', 'municipality_name']);
     var prefectureIndex = findColumnIndex(headers, ['都道府県', 'prefecture', '県']);
-    var messageBoxIdIndex = findColumnIndex(headers, ['メッセージボックスID', 'messagebox_id', 'mb_id']);
+    var messageBoxIdIndex = findColumnIndex(headers, ['受信箱ID', 'メッセージボックスID', 'messagebox_id', 'mb_id']);
     var slackChannelIndex = findColumnIndex(headers, ['Slackチャンネル', 'slack_channel', 'channel']);
     
     console.log('列マッピング: ID=' + idIndex + ', 名前=' + nameIndex + ', 県=' + prefectureIndex + ', MB=' + messageBoxIdIndex + ', Slack=' + slackChannelIndex);
@@ -219,7 +219,7 @@ function getMunicipalityDataFromSheet(defaultSlackTemplate, defaultSlackFilter) 
           row[idIndex],                    // 自治体ID
           row[nameIndex],                  // 自治体名
           row[prefectureIndex] || '',      // 都道府県
-          row[messageBoxIdIndex],          // メッセージボックスID
+          row[messageBoxIdIndex],          // 受信箱ID
           slackChannel,                    // Slackチャンネル
           defaultSlackTemplate,            // Slack通知テンプレート
           defaultSlackFilter               // Slack通知フィルタ
