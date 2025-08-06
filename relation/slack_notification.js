@@ -540,13 +540,6 @@ function sendWithBotToken(tickets, config, botToken) {
   console.log('Bot Token長さ: ' + (botToken ? botToken.length : 'なし'));
   console.log('Bot Token開始文字: ' + (botToken ? botToken.substring(0, 10) + '...' : 'なし'));
   
-  // デバッグ用alert（一時的）
-  SpreadsheetApp.getUi().alert('デバッグ', 
-    'Slack送信開始\n' +
-    '送信先: ' + config.slackChannel + '\n' +
-    'Bot Token長さ: ' + (botToken ? botToken.length : 'なし'), 
-    SpreadsheetApp.getUi().ButtonSet.OK);
-  
   // チャンネル名をそのまま使用（#付きも対応）
   var channelName = config.slackChannel;
   
@@ -579,22 +572,6 @@ function sendWithBotToken(tickets, config, botToken) {
   // チャンネル名をそのまま使用して送信
   var result = attemptSlackSend(channelName, message, botToken, channelType);
   
-  // 結果をalertで表示（一時的）
-  if (result.success) {
-    SpreadsheetApp.getUi().alert('送信成功', 
-      '送信先タイプ: ' + channelType + '\n' +
-      '送信結果: 成功\n' +
-      '詳細: ' + result.message, 
-      SpreadsheetApp.getUi().ButtonSet.OK);
-  } else {
-    SpreadsheetApp.getUi().alert('送信失敗', 
-      '送信先タイプ: ' + channelType + '\n' +
-      '送信結果: 失敗\n' +
-      'エラー: ' + result.error + '\n' +
-      '詳細: ' + result.message, 
-      SpreadsheetApp.getUi().ButtonSet.OK);
-  }
-  
   return result;
 }
 
@@ -612,13 +589,6 @@ function attemptSlackSend(channel, message, botToken, description) {
   console.log('説明: ' + description);
   console.log('メッセージ長: ' + message.length);
   console.log('ボットトークン存在: ' + (botToken ? 'あり' : 'なし'));
-  
-  // デバッグ用alert（一時的）
-  SpreadsheetApp.getUi().alert('API呼び出し開始', 
-    'チャンネル: ' + channel + '\n' +
-    'タイプ: ' + description + '\n' +
-    'Token存在: ' + (botToken ? 'あり' : 'なし'), 
-    SpreadsheetApp.getUi().ButtonSet.OK);
   
   var payload = {
     channel: channel,
@@ -644,14 +614,6 @@ function attemptSlackSend(channel, message, botToken, description) {
     
     var result = JSON.parse(response.getContentText());
     console.log('Slack API レスポンス (' + description + '): ' + JSON.stringify(result));
-    
-    // 結果をalertで表示（一時的）
-    SpreadsheetApp.getUi().alert('API結果', 
-      'ステータス: ' + response.getResponseCode() + '\n' +
-      'OK: ' + (result.ok ? 'true' : 'false') + '\n' +
-      'エラー: ' + (result.error || 'なし') + '\n' +
-      'チャンネル: ' + channel, 
-      SpreadsheetApp.getUi().ButtonSet.OK);
     
     if (result.ok) {
       console.log('✅ Slack通知送信成功（' + description + ' - 送信先: ' + channel + '）');
