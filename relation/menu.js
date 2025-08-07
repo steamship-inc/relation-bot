@@ -15,10 +15,4 @@ function onOpen() {
     .addSeparator()
     .addItem('🔔Slack手動送信', 'manualSendSlack')
     .addToUi();
-
     
-  // 自治体管理メニュー
-//  ui.createMenu('🏛️ 自治体管理')
-//    .addItem('設定シート初期化', 'createMunicipalityConfigSheet')
-//    .addToUi();
-}
