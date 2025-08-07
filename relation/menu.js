@@ -8,16 +8,14 @@ function onOpen() {
   
   // re:lationメニュー（全自治体対応）
   ui.createMenu('🟩 re:lation')
-    .addItem('openチケット取得', 'fetchOpenTickets')
+    .addItem('📊penチケット取得', 'fetchOpenTickets')
     .addSeparator()
     .addItem('📮受信箱更新', 'fetchMessageBoxes')
     .addItem('🏷️チケット分類取得', 'fetchCaseCategories')
+    .addSeparator()
+    .addItem('🔔Slack手動送信', 'manualSendSlack')
     .addToUi();
 
-  // slack通知メニュー
-  ui.createMenu('🔔 Slack通知')
-    .addItem('手動送信', 'manualSendSlack')
-    .addToUi();
     
   // 自治体管理メニュー
 //  ui.createMenu('🏛️ 自治体管理')
