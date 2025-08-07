@@ -46,11 +46,11 @@ function loadMunicipalityConfigFromSheet(includeWithoutSlack) {
   }
   
   var data = configSheet.getDataRange().getValues();
-  var headers = data[0];
+  var headers = data[4]; // 5行目がヘッダー
   var configs = {};
   
-  // ヘッダー行をスキップして設定を読み込み
-  for (var i = 1; i < data.length; i++) {
+  // ヘッダー行をスキップして設定を読み込み（5行目の次から）
+  for (var i = 5; i < data.length; i++) {
     var row = data[i];
     if (!row[0]) continue; // 自治体IDが空の行はスキップ
     
@@ -109,7 +109,11 @@ function createMunicipalityConfigSheet() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var configSheet = ss.insertSheet('📮受信箱設定');
   
-  // ヘッダー行を設定
+  // A1にシートタイトルを設定
+  configSheet.getRange('A1').setValue('📮受信箱設定');
+  configSheet.getRange('A1').setFontWeight('bold');
+  
+  // ヘッダー行を5行目に設定
   var headers = [
     '自治体ID',
     '自治体名', 
@@ -119,7 +123,7 @@ function createMunicipalityConfigSheet() {
     'Slack通知テンプレート(JSON)',
     'Slack通知フィルタ(JSON)'
   ];
-  configSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  configSheet.getRange(5, 1, 1, headers.length).setValues([headers]);
   
   // 初期データ（山鹿市）を設定
   var defaultSlackTemplate = JSON.stringify({
@@ -138,7 +142,7 @@ function createMunicipalityConfigSheet() {
   // 既存の自治体データシートから初期データを取得
   var initialData = getMunicipalityDataFromSheet(defaultSlackTemplate, defaultSlackFilter);
   
-  configSheet.getRange(2, 1, initialData.length, headers.length).setValues(initialData);
+  configSheet.getRange(6, 1, initialData.length, headers.length).setValues(initialData);
   
   // 列幅を調整
   configSheet.setColumnWidth(1, 100); // 自治体ID
@@ -150,7 +154,7 @@ function createMunicipalityConfigSheet() {
   configSheet.setColumnWidth(7, 400); // Slack通知フィルタJSON
   
   // ヘッダー行の書式設定
-  var headerRange = configSheet.getRange(1, 1, 1, headers.length);
+  var headerRange = configSheet.getRange(5, 1, 1, headers.length);
   headerRange.setBackground('#4285f4');
   headerRange.setFontColor('white');
   headerRange.setFontWeight('bold');

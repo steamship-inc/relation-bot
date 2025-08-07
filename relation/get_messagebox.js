@@ -32,8 +32,11 @@ function fetchMessageBoxes() {
   // 対象シートをアクティブにする
   ss.setActiveSheet(configSheet);
 
+  // A1にシートタイトルを設定
+  configSheet.getRange('A1').setValue('📮受信箱設定');
+  
   var data = configSheet.getDataRange().getValues();
-  var headers = data[0];
+  var headers = data[4]; // 5行目がヘッダー
   
   // ヘッダー行の確認（必要に応じて修正）
   if (headers.length < 4 || headers[1] !== '自治体名' || headers[3] !== '受信箱ID') {
@@ -47,9 +50,10 @@ function fetchMessageBoxes() {
       'Slack通知テンプレート(JSON)',
       'Slack通知フィルタ(JSON)'
     ];
-    configSheet.getRange(1, 1, 1, correctHeaders.length).setValues([correctHeaders]);
+    configSheet.getRange(5, 1, 1, correctHeaders.length).setValues([correctHeaders]);
   }
 
+  
   // 既存データの行数を確認
   var existingRowCount = data.length;
   
@@ -58,10 +62,10 @@ function fetchMessageBoxes() {
   
   // メッセージボックス一覧を自治体設定シートに追加・更新
   messageBoxes.forEach(function(messageBox, index) {
-    var rowIndex = index + 2; // ヘッダー行の次から開始（1ベース）
+    var rowIndex = index + 6; // ヘッダー行（5行目）の次から開始（1ベース）
     
     // 既存行の範囲を超える場合は新しい行を追加
-    if (rowIndex > existingRowCount) {
+    if (rowIndex > data.length) {
       configSheet.appendRow(['', '', '', '', '', '', '']);
     }
     
