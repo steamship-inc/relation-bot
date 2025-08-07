@@ -10,13 +10,13 @@ function fetchCaseCategories() {
   // スクリプトプロパティからAPIキーを取得
   var apiKey = getRelationApiKey();
 
-  // 出力先シート（🏷️caseCategories）を取得・新規作成・クリア
+  // 出力先シート（🏷️カテゴリ一覧）を取得・新規作成・クリア
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName('🏷️caseCategories');
+  var sheet = ss.getSheetByName('🏷️カテゴリ一覧');
 
   // シートがなければ新規作成、既存シートあればデータクリア
   if (!sheet) {
-    sheet = ss.insertSheet('🏷️caseCategories');
+    sheet = ss.insertSheet('🏷️カテゴリ一覧');
   } else {
     sheet.clear();
   }
@@ -24,12 +24,23 @@ function fetchCaseCategories() {
   // 対象シートをアクティブにする
   ss.setActiveSheet(sheet);
 
-  // ヘッダー行を追加
-  sheet.appendRow(['受信箱ID', '自治体名', 'チケット分類ID', 'チケット分類名', '親分類ID', 'アーカイブ済み']);
+  // 進捗表示用のセルを準備（H1セルに進捗を表示）
+  var progressCell = sheet.getRange('H1');
+  var totalMunicipalities = Object.keys(configs).length;
+  progressCell.setValue('進捗: 0/' + totalMunicipalities);
+  progressCell.setFontWeight('bold');
+  SpreadsheetApp.flush(); // セル更新を即座に反映
+
+  // ヘッダー行を1行目に追加
+  sheet.getRange(1, 1, 1, 6).setValues([['受信箱ID', '自治体名', 'チケット分類ID', 'チケット分類名', '親分類ID', 'アーカイブ済み']]);
+  sheet.getRange(1, 1, 1, 6).setFontWeight('bold');
   
   var totalCategories = 0;
   var successCount = 0;
   var errorList = [];
+  var allCategoriesData = []; // 全データを格納する配列
+  var batchData = []; // 50自治体分のデータを一時保存
+  var currentRow = 2; // データ開始行（ヘッダーの下）
   
   // 各自治体のチケット分類を順次取得・統合
   var configIds = Object.keys(configs);
@@ -37,6 +48,15 @@ function fetchCaseCategories() {
   for (var i = 0; i < configIds.length; i++) {
     var municipalityId = configIds[i];
     var config = configs[municipalityId];
+    
+    // 50自治体ごとのバッチ開始時に進捗表示
+    if (i % 50 === 0) {
+      var batchStart = i + 1;
+      var batchEnd = Math.min(i + 50, configIds.length);
+      progressCell.setValue(batchStart + '-' + batchEnd + '/' + totalMunicipalities + ' 処理中');
+      SpreadsheetApp.flush();
+      console.log('50自治体バッチ開始: ' + batchStart + '-' + batchEnd + '/' + totalMunicipalities);
+    }
     
     try {
       // チケット分類一覧APIのエンドポイント
@@ -57,28 +77,69 @@ function fetchCaseCategories() {
       // レスポンス（JSON配列）をパース
       var caseCategories = JSON.parse(response.getContentText());
 
-      // チケット分類一覧をシートに出力
+      // チケット分類データを配列に追加（一括処理用）
       caseCategories.forEach(function(category) {
-        sheet.appendRow([
+        var categoryData = [
           config.messageBoxId,            // 受信箱ID
           config.name,                    // 自治体名
           category.case_category_id,      // チケット分類ID
           category.name,                  // チケット分類名（親 > 子 > 孫 形式）
           category.parent_id || '',       // 親分類ID（nullの場合は空文字）
           category.archived               // アーカイブ済みかどうか
-        ]);
+        ];
+        allCategoriesData.push(categoryData);
+        batchData.push(categoryData);
       });
       
       totalCategories += caseCategories.length;
       successCount++;
       
-      console.log(config.name + ' - チケット分類 ' + caseCategories.length + ' 件を取得しました');
+      // 50自治体ごとに進捗表示を更新とデータ書き込み
+      if ((i + 1) % 50 === 0 || i === configIds.length - 1) {
+        // 50自治体分のデータを書き込み
+        if (batchData.length > 0) {
+          var dataRange = sheet.getRange(currentRow, 1, batchData.length, 6);
+          dataRange.setValues(batchData);
+          currentRow += batchData.length;
+          
+          console.log('50自治体バッチ書き込み完了: ' + batchData.length + ' 件 (累計: ' + allCategoriesData.length + ' 件)');
+          batchData = []; // バッチデータをリセット
+        }
+      }
+      
+      // エラー以外の個別ログは削除（50自治体ごとにまとめてログ出力）
       
     } catch (error) {
       errorList.push(config.name + ': ' + error.toString());
       console.error(config.name + ' のチケット分類取得エラー: ' + error.toString());
+      
+      // エラーの場合は必ず進捗表示を更新
+      progressCell.setValue('進捗: ' + (i + 1) + '/' + totalMunicipalities + ' (エラー: ' + config.name + ')');
+      SpreadsheetApp.flush(); // セル更新を即座に反映
+    }
+    
+    // 50自治体ごとにレート制限回避のため待機
+    // re:lation APIは1分間に60回制限なので、50自治体ごとに60秒待機で安全
+    if ((i + 1) % 50 === 0 && i < configIds.length - 1) {
+      console.log('50自治体処理完了 - レート制限回避のため60秒待機...');
+      progressCell.setValue('API制限のため60秒待機');
+      SpreadsheetApp.flush();
+      Utilities.sleep(60000); // 60秒待機
     }
   }
+  
+  // 最終確認：残りのデータがあれば書き込み
+  if (batchData.length > 0) {
+    var dataRange = sheet.getRange(currentRow, 1, batchData.length, 6);
+    dataRange.setValues(batchData);
+    console.log('最終バッチ書き込み完了: ' + batchData.length + ' 件');
+  }
+
+  // 最終完了表示
+  progressCell.setValue('完了: ' + successCount + '/' + totalMunicipalities);
+  SpreadsheetApp.flush();
+  
+  console.log('全処理完了: ' + successCount + '/' + totalMunicipalities + ' 自治体');
   
   // 結果表示
   var ui = SpreadsheetApp.getUi();
