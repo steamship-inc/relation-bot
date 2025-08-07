@@ -24,23 +24,27 @@ function fetchCaseCategories() {
   // 対象シートをアクティブにする
   ss.setActiveSheet(sheet);
 
-  // 進捗表示用のセルを準備（H1セルに進捗を表示）
-  var progressCell = sheet.getRange('H1');
+  // A1にシートタイトルを設定
+  sheet.getRange('A1').setValue('🏷️チケット分類');
+  sheet.getRange('A1').setFontWeight('bold');
+
+  // 進捗表示用のセルを準備（C1セルに進捗を表示）
+  var progressCell = sheet.getRange('C1');
   var totalMunicipalities = Object.keys(configs).length;
   progressCell.setValue('進捗: 0/' + totalMunicipalities);
   progressCell.setFontWeight('bold');
   SpreadsheetApp.flush(); // セル更新を即座に反映
 
-  // ヘッダー行を1行目に追加
-  sheet.getRange(1, 1, 1, 6).setValues([['受信箱ID', '自治体名', 'チケット分類ID', 'チケット分類名', '親分類ID', 'アーカイブ済み']]);
-  sheet.getRange(1, 1, 1, 6).setFontWeight('bold');
+  // ヘッダー行を5行目に追加
+  sheet.getRange(5, 1, 1, 6).setValues([['受信箱ID', '自治体名', 'チケット分類ID', 'チケット分類名', '親分類ID', 'アーカイブ済み']]);
+  sheet.getRange(5, 1, 1, 6).setFontWeight('bold');
   
   var totalCategories = 0;
   var successCount = 0;
   var errorList = [];
   var allCategoriesData = []; // 全データを格納する配列
   var batchData = []; // 50自治体分のデータを一時保存
-  var currentRow = 2; // データ開始行（ヘッダーの下）
+  var currentRow = 6; // データ開始行（ヘッダーの下）
   
   // 各自治体のチケット分類を順次取得・統合
   var configIds = Object.keys(configs);
