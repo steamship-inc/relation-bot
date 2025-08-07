@@ -35,19 +35,12 @@ function fetchMessageBoxes() {
   // A1にシートタイトルを設定
   configSheet.getRange('A1').setValue('📮受信箱');
   
-  // 進捗表示用のセルを準備（C1セルに進捗を表示）
-  var progressCell = configSheet.getRange('C1');
-  var totalMessageBoxes = messageBoxes.length;
-  progressCell.setValue('進捗: 0/' + totalMessageBoxes);
-  progressCell.setFontWeight('bold');
-  SpreadsheetApp.flush(); // セル更新を即座に反映
-  
   var data = configSheet.getDataRange().getValues();
   var headers = data[4]; // 5行目がヘッダー
   
   // ヘッダー行の確認（必要に応じて修正）
   if (headers.length < 4 || headers[1] !== '自治体名' || headers[3] !== '受信箱ID') {
-    console.log('受信箱シートのヘッダーを確認・修正します。');
+    console.log('受信箱設定シートのヘッダーを確認・修正します。');
     var correctHeaders = [
       '自治体ID',
       '自治体名', 
@@ -67,22 +60,9 @@ function fetchMessageBoxes() {
   // コード表からのマッピング用データを事前に読み込み
   var codeTableMap = loadCodeTableMap();
   
-  var processedCount = 0;
-  
-  // メッセージボックス一覧を50件ずつバッチ処理で受信箱シートに追加・更新
-  for (var i = 0; i < messageBoxes.length; i++) {
-    var messageBox = messageBoxes[i];
-    
-    // 50自治体ごとのバッチ開始時に進捗表示
-    if (i % 50 === 0) {
-      var batchStart = i + 1;
-      var batchEnd = Math.min(i + 50, messageBoxes.length);
-      progressCell.setValue(batchStart + '-' + batchEnd + '/' + totalMessageBoxes + ' 処理中');
-      SpreadsheetApp.flush();
-      console.log('50自治体バッチ開始: ' + batchStart + '-' + batchEnd + '/' + totalMessageBoxes);
-    }
-    
-    var rowIndex = i + 6; // ヘッダー行（5行目）の次から開始（1ベース）
+  // メッセージボックス一覧を受信箱シートに追加・更新
+  messageBoxes.forEach(function(messageBox, index) {
+    var rowIndex = index + 6; // ヘッダー行（5行目）の次から開始（1ベース）
     
     // 既存行の範囲を超える場合は新しい行を追加
     if (rowIndex > data.length) {
@@ -129,28 +109,15 @@ function fetchMessageBoxes() {
     } else {
       console.log('⚠ ' + municipalityName + ' -> コード表で見つかりませんでした');
     }
-    
-    processedCount++;
-    
-    // 50自治体ごとに進捗更新
-    if ((i + 1) % 50 === 0 || i === messageBoxes.length - 1) {
-      progressCell.setValue('進捗: ' + (i + 1) + '/' + totalMessageBoxes);
-      SpreadsheetApp.flush();
-      console.log('50自治体バッチ完了: ' + (i + 1) + '/' + totalMessageBoxes);
-    }
-  }
-
-  // 最終完了表示
-  progressCell.setValue('完了: ' + processedCount + '/' + totalMessageBoxes);
-  SpreadsheetApp.flush();
+  });
 
   // 取得件数をログ出力
-  console.log('受信箱シート ' + messageBoxes.length + ' 件を更新しました');
+  console.log('受信箱設定シート ' + messageBoxes.length + ' 件を更新しました');
   
   // 処理完了をUIで通知
   var message = 'メッセージボックス一覧取得が完了しました。\n\n' +
                 '- メッセージボックス取得: ' + messageBoxes.length + ' 件\n' +
-                '- 受信箱シートを更新\n' +
+                '- 受信箱設定シートを更新\n' +
                 '- コード表から団体コード・都道府県名を設定';
   
   var ui = SpreadsheetApp.getUi();

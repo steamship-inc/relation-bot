@@ -38,11 +38,11 @@ function loadMunicipalityConfigFromSheet(includeWithoutSlack) {
   }
   
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var configSheet = ss.getSheetByName('📮受信箱設定') || ss.getSheetByName('自治体設定');
+  var configSheet = ss.getSheetByName('📮受信箱');
   
   if (!configSheet) {
     // 設定シートがない場合はエラー
-    throw new Error('受信箱設定シートが見つかりません。メニュー「📮受信箱一覧更新」を実行してください。');
+    throw new Error('受信箱シートが見つかりません。メニュー「📮受信箱取得」を実行してください。');
   }
   
   var data = configSheet.getDataRange().getValues();
@@ -109,10 +109,10 @@ function parseSlackNotificationFilter(jsonString) {
  */
 function createMunicipalityConfigSheet() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var configSheet = ss.insertSheet('📮受信箱設定');
+  var configSheet = ss.insertSheet('📮受信箱');
   
   // A1にシートタイトルを設定
-  configSheet.getRange('A1').setValue('📮受信箱設定');
+  configSheet.getRange('A1').setValue('📮受信箱');
   configSheet.getRange('A1').setFontWeight('bold');
   
   // ヘッダー行を5行目に設定
@@ -161,7 +161,7 @@ function createMunicipalityConfigSheet() {
   headerRange.setFontColor('white');
   headerRange.setFontWeight('bold');
   
-  console.log('📮受信箱設定シートを初期化しました');
+  console.log('📮受信箱シートを初期化しました');
   
   // 初期設定を返す
   return loadMunicipalityConfigFromSheet();
