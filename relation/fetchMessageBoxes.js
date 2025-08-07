@@ -137,6 +137,15 @@ function fetchMessageBoxes() {
       progressCell.setValue('進捗: ' + (i + 1) + '/' + totalMessageBoxes);
       SpreadsheetApp.flush();
       console.log('50自治体バッチ完了: ' + (i + 1) + '/' + totalMessageBoxes);
+      
+      // 50件バッチごとにAPIレート制限対策（60秒待機）
+      if ((i + 1) % 50 === 0 && i < messageBoxes.length - 1) { // 最後のバッチでは待機しない
+        progressCell.setValue('APIレート制限対策: 60秒待機中...');
+        SpreadsheetApp.flush();
+        console.log('APIレート制限対策: 60秒待機開始');
+        Utilities.sleep(60000); // 60秒待機
+        console.log('APIレート制限対策: 60秒待機完了');
+      }
     }
   }
 
