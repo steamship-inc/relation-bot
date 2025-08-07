@@ -37,8 +37,8 @@ function fetchOpenTickets() {
   SpreadsheetApp.flush(); // セル更新を即座に反映
 
   // ヘッダー行を5行目に追加
-  sheet.getRange(5, 1, 1, 9).setValues([['自治体名', 'ID', 'タイトル', 'ステータス', '作成日', '更新日', 'チケット分類ID', 'ラベルID', '保留理由ID']]);
-  sheet.getRange(5, 1, 1, 9).setFontWeight('bold');
+  sheet.getRange(5, 1, 1, 10).setValues([['受信箱ID', '自治体名', 'ID', 'タイトル', 'ステータス', '作成日', '更新日', 'チケット分類ID', 'ラベルID', '保留理由ID']]);
+  sheet.getRange(5, 1, 1, 10).setFontWeight('bold');
   
   var successCount = 0;
   var errorList = [];
@@ -69,6 +69,7 @@ function fetchOpenTickets() {
       // チケットデータを配列に追加（一括処理用）
       tickets.forEach(function(ticket) {
         var ticketData = [
+          config.messageBoxId,        // 受信箱ID
           config.name,                // 自治体名
           ticket.ticket_id,           // チケットID
           ticket.title,               // タイトル
@@ -90,15 +91,15 @@ function fetchOpenTickets() {
       if ((i + 1) % 50 === 0 || i === configIds.length - 1) {
         // 50自治体分のデータを書き込み
         if (batchData.length > 0) {
-          var dataRange = sheet.getRange(currentRow, 1, batchData.length, 9);
+          var dataRange = sheet.getRange(currentRow, 1, batchData.length, 10);
           dataRange.setValues(batchData);
           
           // チケットURLとリンク設定（バッチ処理）
           for (var j = 0; j < batchData.length; j++) {
             var ticketRowData = batchData[j];
-            var ticketId = ticketRowData[1]; // チケットID
-            var title = ticketRowData[2]; // タイトル
-            var municipalityName = ticketRowData[0]; // 自治体名
+            var ticketId = ticketRowData[2]; // チケットID
+            var title = ticketRowData[3]; // タイトル
+            var municipalityName = ticketRowData[1]; // 自治体名
             
             // 自治体設定から受信箱IDを取得
             var ticketConfig = null;
@@ -116,7 +117,7 @@ function fetchOpenTickets() {
                 .setLinkUrl(ticketUrl)
                 .build();
               
-              sheet.getRange(currentRow + j, 3).setRichTextValue(richText);
+              sheet.getRange(currentRow + j, 4).setRichTextValue(richText);
             }
           }
           
@@ -152,7 +153,7 @@ function fetchOpenTickets() {
   
   // 最終確認：残りのデータがあれば書き込み
   if (batchData.length > 0) {
-    var dataRange = sheet.getRange(currentRow, 1, batchData.length, 9);
+    var dataRange = sheet.getRange(currentRow, 1, batchData.length, 10);
     dataRange.setValues(batchData);
     console.log('最終バッチ書き込み完了: ' + batchData.length + ' 件');
   }
