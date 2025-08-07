@@ -561,20 +561,7 @@ function processSelectedMunicipality(municipalityCode) {
       return;
     }
     
-    // 確認ダイアログ
-    var ui = SpreadsheetApp.getUi();
-    var confirmResult = ui.alert('手動送信確認', 
-                                '「' + selectedConfig.name + '」のopenチケット ' + tickets.length + '件を\n' +
-                                '送信先: ' + selectedConfig.slackChannel + '\n\n' +
-                                '手動送信しますか？', 
-                                ui.ButtonSet.YES_NO);
-    
-    if (confirmResult !== ui.Button.YES) {
-      console.log('手動送信がキャンセルされました');
-      return;
-    }
-    
-    // 実際のチケットで通知送信
+    // 実際のチケットで通知送信（確認ダイアログなしで即座に送信）
     console.log('=== Slack手動送信開始 ===');
     console.log('対象自治体: ' + selectedConfig.name);
     console.log('チケット件数: ' + tickets.length);
@@ -582,14 +569,13 @@ function processSelectedMunicipality(municipalityCode) {
     
     var sendResult = sendSlack(tickets, selectedConfig);
     
-    // 送信結果に応じて適切なメッセージを表示
+    // 送信結果の処理（成功の場合はコンソールログのみ、エラーの場合のみダイアログ表示）
     if (sendResult && sendResult.success) {
-      ui.alert('送信完了', 
-               '「' + selectedConfig.name + '」のopenチケット ' + tickets.length + '件の送信に成功しました。\n' +
-               '送信先: ' + selectedConfig.slackChannel, 
-               ui.ButtonSet.OK);
+      console.log('✅ 送信完了: 「' + selectedConfig.name + '」のopenチケット ' + tickets.length + '件を送信しました');
+      console.log('送信先: ' + selectedConfig.slackChannel);
     } else {
-      // 送信失敗の詳細を表示
+      // 送信失敗の場合のみダイアログを表示
+      var ui = SpreadsheetApp.getUi();
       var errorMessage = '「' + selectedConfig.name + '」のSlack通知送信に失敗しました。\n\n';
       errorMessage += '送信先: ' + selectedConfig.slackChannel + '\n';
       
