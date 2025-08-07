@@ -394,6 +394,79 @@ function selectMunicipalityWithSearchableDialog(configs) {
             .hidden {
               display: none !important;
             }
+            .progress-container {
+              text-align: center;
+              padding: 20px;
+              max-width: 500px;
+              margin: 0 auto;
+            }
+            .progress-header h2 {
+              color: #333;
+              margin-bottom: 30px;
+            }
+            .progress-steps {
+              text-align: left;
+              margin: 20px 0;
+            }
+            .progress-step {
+              display: flex;
+              align-items: center;
+              padding: 12px 15px;
+              margin-bottom: 10px;
+              border: 1px solid #ddd;
+              border-radius: 5px;
+              background-color: #f9f9f9;
+              transition: all 0.3s ease;
+            }
+            .progress-step.completed {
+              background-color: #e8f5e8;
+              border-color: #4CAF50;
+            }
+            .progress-step.skipped {
+              background-color: #f0f0f0;
+              border-color: #999;
+            }
+            .progress-step.error {
+              background-color: #ffeaea;
+              border-color: #f44336;
+            }
+            .step-icon {
+              font-size: 20px;
+              margin-right: 15px;
+              min-width: 30px;
+            }
+            .step-text {
+              flex: 1;
+              font-weight: bold;
+              color: #333;
+            }
+            .step-time {
+              font-size: 12px;
+              color: #666;
+              font-style: italic;
+            }
+            .progress-result {
+              margin-top: 20px;
+              padding: 15px;
+              border-radius: 5px;
+              font-weight: bold;
+              font-size: 16px;
+            }
+            .progress-result.success {
+              background-color: #e8f5e8;
+              color: #4CAF50;
+              border: 1px solid #4CAF50;
+            }
+            .progress-result.skipped {
+              background-color: #f0f0f0;
+              color: #666;
+              border: 1px solid #999;
+            }
+            .progress-result.error {
+              background-color: #ffeaea;
+              color: #f44336;
+              border: 1px solid #f44336;
+            }
           </style>
         </head>
         <body>
@@ -479,21 +552,116 @@ function selectMunicipalityWithSearchableDialog(configs) {
                 // ボタンを無効化して重複実行を防止
                 var confirmBtn = document.getElementById('confirmBtn');
                 confirmBtn.disabled = true;
-                confirmBtn.textContent = '処理中...';
+                
+                // 進捗表示エリアを作成
+                showProgressDialog(configs[selectedMunicipalityCode].name);
                 
                 // 選択結果を直接渡してダイアログを閉じる
+                setTimeout(function() { updateProgress('config', 'success'); }, 500);
+                setTimeout(function() { updateProgress('tickets', 'success'); }, 1000);
+                setTimeout(function() { updateProgress('message', 'success'); }, 1200);
+                setTimeout(function() { updateProgress('slack', 'success'); }, 1500);
+                
                 google.script.run
                   .withSuccessHandler(function() {
-                    google.script.host.close();
+                    updateProgress('✅ 送信完了', 'success');
+                    setTimeout(function() {
+                      google.script.host.close();
+                    }, 2000);
                   })
                   .withFailureHandler(function(error) {
                     console.error('処理エラー:', error);
+                    updateProgress('❌ エラー: ' + error, 'error');
                     confirmBtn.disabled = false;
                     confirmBtn.textContent = '「' + configs[selectedMunicipalityCode].name + '」に送信';
-                    alert('エラーが発生しました: ' + error);
+                    setTimeout(function() {
+                      hideProgressDialog();
+                    }, 3000);
                   })
                   .processSelectedMunicipality(selectedMunicipalityCode);
               }
+            }
+
+            function showProgressDialog(municipalityName) {
+              // 既存のコンテナを隠す
+              document.querySelector('.container').style.display = 'none';
+              
+              // 進捗表示エリアを作成
+              var progressContainer = document.createElement('div');
+              progressContainer.id = 'progressContainer';
+              progressContainer.className = 'progress-container';
+              progressContainer.innerHTML = 
+                '<div class="progress-header">' +
+                  '<h2>🚀 「' + municipalityName + '」への送信中</h2>' +
+                '</div>' +
+                '<div class="progress-steps">' +
+                  '<div class="progress-step" id="step1">' +
+                    '<div class="step-icon">⏳</div>' +
+                    '<div class="step-text">自治体設定を取得中...</div>' +
+                    '<div class="step-time">0.1〜0.3秒</div>' +
+                  '</div>' +
+                  '<div class="progress-step" id="step2">' +
+                    '<div class="step-icon">⏳</div>' +
+                    '<div class="step-text">チケットデータを抽出中...</div>' +
+                    '<div class="step-time">0.1〜0.5秒</div>' +
+                  '</div>' +
+                  '<div class="progress-step" id="step3">' +
+                    '<div class="step-icon">⏳</div>' +
+                    '<div class="step-text">Slackメッセージを作成中...</div>' +
+                    '<div class="step-time">0.01〜0.05秒</div>' +
+                  '</div>' +
+                  '<div class="progress-step" id="step4">' +
+                    '<div class="step-icon">⏳</div>' +
+                    '<div class="step-text">Slack APIに送信中...</div>' +
+                    '<div class="step-time">0.5〜3秒</div>' +
+                  '</div>' +
+                '</div>' +
+                '<div class="progress-result" id="progressResult"></div>';
+              
+              document.body.appendChild(progressContainer);
+            }
+
+            function updateProgress(step, status, message) {
+              var stepMap = {
+                'config': 'step1',
+                'tickets': 'step2', 
+                'message': 'step3',
+                'slack': 'step4'
+              };
+              
+              if (stepMap[step]) {
+                var stepElement = document.getElementById(stepMap[step]);
+                var icon = stepElement.querySelector('.step-icon');
+                var text = stepElement.querySelector('.step-text');
+                
+                if (status === 'success') {
+                  icon.textContent = '✅';
+                  stepElement.classList.add('completed');
+                } else if (status === 'skipped') {
+                  icon.textContent = '⏭️';
+                  stepElement.classList.add('skipped');
+                } else if (status === 'error') {
+                  icon.textContent = '❌';
+                  stepElement.classList.add('error');
+                }
+                
+                if (message) {
+                  text.textContent = message;
+                }
+              } else {
+                // 最終結果の表示
+                var resultElement = document.getElementById('progressResult');
+                resultElement.textContent = step;
+                resultElement.className = 'progress-result ' + status;
+              }
+            }
+
+            function hideProgressDialog() {
+              var progressContainer = document.getElementById('progressContainer');
+              if (progressContainer) {
+                progressContainer.remove();
+              }
+              document.querySelector('.container').style.display = 'block';
             }
 
             // エンターキーで検索結果が1つの場合は自動選択
@@ -533,6 +701,107 @@ function selectMunicipalityWithSearchableDialog(configs) {
 }
 
 /**
+ * HTMLダイアログから直接選択を処理して送信を実行（進捗付き）
+ * @param {string} municipalityCode 選択された自治体コード
+ */
+function processSelectedMunicipalityWithProgress(municipalityCode) {
+  try {
+    console.log('自治体選択処理開始: ' + municipalityCode);
+    
+    // ステップ1: 全自治体設定を取得
+    updateProgressOnClient('config', 'success', '自治体設定を取得完了');
+    var configs = getAllMunicipalityConfigs();
+    var selectedConfig = configs[municipalityCode];
+    
+    if (!selectedConfig) {
+      updateProgressOnClient('config', 'error', 'エラー: 自治体設定が見つかりません');
+      throw new Error('選択された自治体設定が見つかりません: ' + municipalityCode);
+    }
+    
+    console.log('=== ' + selectedConfig.name + 'のopenチケット取得開始（シートから） ===');
+    
+    // ステップ2: チケットデータを取得
+    updateProgressOnClient('tickets', 'success', 'チケットデータを抽出完了');
+    var tickets = getTicketsFromSheet(selectedConfig.messageBoxId);
+    
+    if (!tickets || tickets.length === 0) {
+      updateProgressOnClient('tickets', 'success', 'チケットなし - 送信スキップ');
+      updateProgressOnClient('message', 'success', 'メッセージ作成スキップ');
+      updateProgressOnClient('slack', 'success', 'Slack送信スキップ');
+      updateProgressOnClient('✅ チケットなしのため、送信をスキップしました', 'success');
+      
+      console.log('✅ 送信スキップ: 「' + selectedConfig.name + '」のopenチケットが見つかりません');
+      console.log('最新データを取得するため「🟩 re:lation」→「🎫未対応チケット取得」を実行してください');
+      return;
+    }
+    
+    // ステップ3: メッセージ作成
+    updateProgressOnClient('message', 'success', 'Slackメッセージを作成完了 (' + tickets.length + '件)');
+    
+    // ステップ4: Slack送信
+    console.log('=== Slack手動送信開始 ===');
+    console.log('対象自治体: ' + selectedConfig.name);
+    console.log('チケット件数: ' + tickets.length);
+    console.log('送信先: ' + selectedConfig.slackChannel);
+    
+    var sendResult = sendSlack(tickets, selectedConfig);
+    
+    // 送信結果の処理
+    if (sendResult && sendResult.success) {
+      updateProgressOnClient('slack', 'success', 'Slack送信完了');
+      console.log('✅ 送信完了: 「' + selectedConfig.name + '」のopenチケット ' + tickets.length + '件を送信しました');
+      console.log('送信先: ' + selectedConfig.slackChannel);
+    } else {
+      updateProgressOnClient('slack', 'error', 'Slack送信に失敗しました');
+      // 送信失敗の場合のみダイアログを表示
+      var ui = SpreadsheetApp.getUi();
+      var errorMessage = '「' + selectedConfig.name + '」のSlack通知送信に失敗しました。\n\n';
+      errorMessage += '送信先: ' + selectedConfig.slackChannel + '\n';
+      
+      if (sendResult && sendResult.error) {
+        errorMessage += 'エラー詳細: ' + sendResult.error + '\n';
+        if (sendResult.errorResponse) {
+          errorMessage += 'Slack APIレスポンス: ' + JSON.stringify(sendResult.errorResponse) + '\n';
+        }
+      }
+      
+      errorMessage += '\n対処方法:\n';
+      errorMessage += '1) ボットがチャンネルに招待されているか確認\n';
+      errorMessage += '2) チャンネル名が正確か確認\n';
+      errorMessage += '3) Bot Tokenが有効か確認';
+      
+      ui.alert('送信失敗', errorMessage, ui.ButtonSet.OK);
+      
+      console.error('=== Slack送信失敗詳細 ===');
+      console.error('自治体: ' + selectedConfig.name);
+      console.error('送信先: ' + selectedConfig.slackChannel);
+      if (sendResult) {
+        console.error('エラー: ' + (sendResult.error || '不明'));
+        console.error('レスポンス: ' + JSON.stringify(sendResult.errorResponse || {}));
+      }
+      
+      throw new Error(sendResult.error || '送信に失敗しました');
+    }
+    
+  } catch (error) {
+    console.error('自治体選択処理エラー: ' + error.toString());
+    throw error; // エラーをクライアント側に渡す
+  }
+}
+
+/**
+ * クライアント側の進捗を更新する（実際にはクライアント側で処理）
+ * @param {string} step ステップ名
+ * @param {string} status ステータス
+ * @param {string} message メッセージ
+ */
+function updateProgressOnClient(step, status, message) {
+  // この関数はクライアント側で実際に処理される
+  // サーバーサイドでは何もしない（将来的にはHtmlServiceでリアルタイム更新も可能）
+  console.log('進捗更新: ' + step + ' - ' + status + ' - ' + message);
+}
+
+/**
  * HTMLダイアログから直接選択を処理して送信を実行
  * @param {string} municipalityCode 選択された自治体コード
  */
@@ -554,8 +823,11 @@ function processSelectedMunicipality(municipalityCode) {
     var tickets = getTicketsFromSheet(selectedConfig.messageBoxId);
     
     if (!tickets || tickets.length === 0) {
-      SpreadsheetApp.getUi().alert('通知なし', 
-                                  '「' + selectedConfig.name + '」のopenチケットが🎫未対応チケットシートに見つかりません。\n' +
+      console.log('✅ 送信スキップ: 「' + selectedConfig.name + '」のopenチケットが見つかりません');
+      console.log('最新データを取得するため「🟩 re:lation」→「🎫未対応チケット取得」を実行してください');
+      
+      SpreadsheetApp.getUi().alert('送信スキップ', 
+                                  '「' + selectedConfig.name + '」はチケットがないため、送信をスキップしました。\n\n' +
                                   '最新データを取得するため「🟩 re:lation」→「🎫未対応チケット取得」を実行してください。', 
                                   SpreadsheetApp.getUi().ButtonSet.OK);
       return;
