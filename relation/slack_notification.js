@@ -162,8 +162,8 @@ function getTicketsFromSheet(messageBoxId) {
           status_cd: row[4] || 'open', // E列: ステータス
           created_at: row[5] || null, // F列: 作成日（Dateオブジェクト）
           last_updated_at: row[6] || null, // G列: 更新日（Dateオブジェクト）
-          case_category_ids: parseIds(row[7]), // H列: チケット分類ID
-          label_ids: parseIds(row[8]), // I列: ラベルID
+          case_category_names: row[7] ? row[7].toString().split(', ').filter(function(name) { return name; }) : [], // H列: チケット分類名
+          label_names: row[8] ? row[8].toString().split(', ').filter(function(name) { return name; }) : [], // I列: ラベル名
           pending_reason_id: row[9] || null // J列: 保留理由ID
         };
         
@@ -201,6 +201,161 @@ function parseIds(idsString) {
     console.error('ID解析エラー: ' + error.toString());
     return [];
   }
+}
+
+/**
+ * 指定受信箱IDのチケット分類マップを取得
+ * @param {string} messageBoxId 受信箱ID
+ * @return {Object} チケット分類マップ（ID → 名前）
+ */
+function getCaseCategoriesMap(messageBoxId) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('🏷️チケット分類');
+    
+    if (!sheet) {
+      console.log('🏷️チケット分類シートが見つかりません');
+      return {};
+    }
+    
+    var data = sheet.getDataRange().getValues();
+    if (data.length <= 5) {
+      console.log('🏷️チケット分類シートにデータがありません');
+      return {};
+    }
+    
+    var categoriesMap = {};
+    
+    // データ行をループ（6行目以降、0ベースで5以降）
+    for (var i = 5; i < data.length; i++) {
+      var row = data[i];
+      
+      // 受信箱IDが一致するかチェック（A列: 受信箱ID）
+      if (row[0] && row[0].toString() === messageBoxId.toString()) {
+        var categoryId = row[2]; // C列: チケット分類ID
+        var categoryName = row[3]; // D列: チケット分類名
+        
+        if (categoryId && categoryName) {
+          // 数値IDと文字列IDの両方に対応
+          var numericId = parseInt(categoryId);
+          if (!isNaN(numericId)) {
+            categoriesMap[numericId] = categoryName;
+          }
+          categoriesMap[categoryId] = categoryName;
+          categoriesMap[categoryId.toString()] = categoryName;
+        }
+      }
+    }
+    
+    console.log('チケット分類マップ取得完了: ' + Object.keys(categoriesMap).length + '件');
+    return categoriesMap;
+    
+  } catch (error) {
+    console.error('チケット分類マップ取得エラー: ' + error.toString());
+    return {};
+  }
+}
+
+/**
+ * 指定受信箱IDのラベルマップを取得
+ * @param {string} messageBoxId 受信箱ID
+ * @return {Object} ラベルマップ（ID → 名前）
+ */
+function getLabelsMap(messageBoxId) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('🏷️ラベル');
+    
+    if (!sheet) {
+      console.log('🏷️ラベルシートが見つかりません');
+      return {};
+    }
+    
+    var data = sheet.getDataRange().getValues();
+    if (data.length <= 5) {
+      console.log('🏷️ラベルシートにデータがありません');
+      return {};
+    }
+    
+    var labelsMap = {};
+    
+    // データ行をループ（6行目以降、0ベースで5以降）
+    for (var i = 5; i < data.length; i++) {
+      var row = data[i];
+      
+      // 受信箱IDが一致するかチェック（A列: 受信箱ID）
+      if (row[0] && row[0].toString() === messageBoxId.toString()) {
+        var labelId = row[2]; // C列: ラベルID
+        var labelName = row[3]; // D列: ラベル名
+        
+        if (labelId && labelName) {
+          // 数値IDと文字列IDの両方に対応
+          var numericId = parseInt(labelId);
+          if (!isNaN(numericId)) {
+            labelsMap[numericId] = labelName;
+          }
+          labelsMap[labelId] = labelName;
+          labelsMap[labelId.toString()] = labelName;
+        }
+      }
+    }
+    
+    console.log('ラベルマップ取得完了: ' + Object.keys(labelsMap).length + '件');
+    if (Object.keys(labelsMap).length > 0) {
+      console.log('ラベルマップサンプル: ' + JSON.stringify(Object.keys(labelsMap).slice(0, 5).reduce(function(obj, key) {
+        obj[key] = labelsMap[key];
+        return obj;
+      }, {})));
+    }
+    return labelsMap;
+    
+  } catch (error) {
+    console.error('ラベルマップ取得エラー: ' + error.toString());
+    return {};
+  }
+}
+
+/**
+ * チケット分類IDから分類名の配列を取得
+ * @param {Array} categoryIds チケット分類ID配列
+ * @param {Object} categoriesMap チケット分類マップ
+ * @return {Array} チケット分類名配列
+ */
+function getCategoryNames(categoryIds, categoriesMap) {
+  if (!categoryIds || categoryIds.length === 0) {
+    return [];
+  }
+  
+  return categoryIds.map(function(categoryId) {
+    // 文字列と数値の両方でカテゴリマップを検索
+    var categoryName = categoriesMap[categoryId] || categoriesMap[parseInt(categoryId)] || categoriesMap[categoryId.toString()];
+    return categoryName || 'ID:' + categoryId; // 名前が見つからない場合はIDを表示
+  });
+}
+
+/**
+ * ラベルIDからラベル名の配列を取得
+ * @param {Array} labelIds ラベルID配列
+ * @param {Object} labelsMap ラベルマップ
+ * @return {Array} ラベル名配列
+ */
+function getLabelNames(labelIds, labelsMap) {
+  if (!labelIds || labelIds.length === 0) {
+    return [];
+  }
+  
+  return labelIds.map(function(labelId) {
+    // 文字列と数値の両方でラベルマップを検索
+    var labelName = labelsMap[labelId] || labelsMap[parseInt(labelId)] || labelsMap[labelId.toString()];
+    
+    // デバッグ用ログ：ID変換の詳細
+    if (!labelName) {
+      console.log('ラベル名が見つかりません - ID: ' + labelId + ' (type: ' + typeof labelId + ')');
+      console.log('利用可能なラベルID: ' + Object.keys(labelsMap).slice(0, 10).join(', '));
+    }
+    
+    return labelName || 'ID:' + labelId; // 名前が見つからない場合はIDを表示
+  });
 }
 
 /**
@@ -706,7 +861,9 @@ function createSlackMessage(tickets, config) {
       .replace('{ticketId}', ticket.ticket_id)
       .replace('{title}', ticket.title)
       .replace('{createdAt}', formatDate(ticket.created_at))
-      .replace('{updatedAt}', formatDate(ticket.last_updated_at));
+      .replace('{updatedAt}', formatDate(ticket.last_updated_at))
+      .replace('{categoryNames}', (ticket.case_category_names && ticket.case_category_names.length > 0) ? ticket.case_category_names.join(', ') : '')
+      .replace('{labelNames}', (ticket.label_names && ticket.label_names.length > 0) ? ticket.label_names.join(', ') : '');
     
     message += ticketLine;
   }
@@ -731,7 +888,7 @@ function getSlackMessageTemplate(config) {
   var defaultTemplate = {
     headerTemplate: '🎫 *{municipalityName} - 未対応チケット状況報告*\n\n📊 未対応チケット数: *{totalCount}件*\n\n',
     ticketListHeader: '📋 *最新チケット（上位{displayCount}件）:*\n',
-    ticketItemTemplate: '• <{ticketUrl}|#{ticketId}> {title}\n  作成: {createdAt} | 更新: {updatedAt}\n',
+    ticketItemTemplate: '• <{ticketUrl}|#{ticketId}> {title}\n  作成: {createdAt} | 更新: {updatedAt}\n  分類: {categoryNames} | ラベル: {labelNames}\n',
     remainingTicketsMessage: '\n... 他 {remainingCount}件のチケットがあります\n',
     footerMessage: '\n💡 詳細はスプレッドシートをご確認ください',
     noTicketsMessage: '✅ {municipalityName} - 未対応チケットはありません！',

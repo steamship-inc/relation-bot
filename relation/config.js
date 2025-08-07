@@ -57,6 +57,15 @@ function buildCaseCategoriesUrl(messageBoxId) {
 }
 
 /**
+ * ラベルAPIのURLを生成
+ * @param {string} messageBoxId 受信箱ID
+ * @return {string} ラベルAPI URL
+ */
+function buildLabelsUrl(messageBoxId) {
+  return RELATION_BASE_URL + '/api/v2/' + messageBoxId + '/labels';
+}
+
+/**
  * メッセージボックス一覧APIのURLを生成
  * @return {string} メッセージボックス一覧API URL
  */

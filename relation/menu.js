@@ -12,6 +12,7 @@ function onOpen() {
     .addSeparator()
     .addItem('📮受信箱取得', 'fetchMessageBoxes')
     .addItem('🏷️チケット分類取得', 'fetchCaseCategories')
+    .addItem('🏷️ラベル取得', 'fetchLabels')
     .addSeparator()
     .addItem('🔔Slack手動送信', 'manualSendSlack')
     .addToUi();
