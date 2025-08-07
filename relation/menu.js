@@ -8,10 +8,10 @@ function onOpen() {
   
   // re:lationメニュー（全自治体対応）
   ui.createMenu('🟩 re:lation')
-    .addItem('全自治体 openチケット取得', 'fetchAllMunicipalitiesOpenTickets')
+    .addItem('openチケット取得', 'fetchOpenTickets')
     .addSeparator()
-    .addItem('📮受信箱一覧更新', 'fetchMessageBoxes')
-    .addItem('🏷️カテゴリ一覧取得', 'fetchCaseCategories')
+    .addItem('📮受信箱更新', 'fetchMessageBoxes')
+    .addItem('🏷️チケット分類取得', 'fetchCaseCategories')
     .addToUi();
 
   // slack通知メニュー

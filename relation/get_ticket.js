@@ -2,7 +2,7 @@
  * 全自治体のオープンチケットを取得してシートに統合出力
  * メニューから呼び出される主要機能
  */
-function fetchAllMunicipalitiesOpenTickets() {
+function fetchOpenTickets() {
   var ui = SpreadsheetApp.getUi();
   var configs = getAllMunicipalityConfigs();
 

@@ -10,13 +10,13 @@ function fetchCaseCategories() {
   // スクリプトプロパティからAPIキーを取得
   var apiKey = getRelationApiKey();
 
-  // 出力先シート（🏷️カテゴリ一覧）を取得・新規作成・クリア
+  // 出力先シート（🏷️チケット分類）を取得・新規作成・クリア
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName('🏷️カテゴリ一覧');
+  var sheet = ss.getSheetByName('🏷️チケット分類');
 
   // シートがなければ新規作成、既存シートあればデータクリア
   if (!sheet) {
-    sheet = ss.insertSheet('🏷️カテゴリ一覧');
+    sheet = ss.insertSheet('🏷️チケット分類');
   } else {
     sheet.clear();
   }
