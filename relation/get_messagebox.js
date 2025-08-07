@@ -18,15 +18,15 @@ function fetchMessageBoxes() {
   // レスポンス（JSON配列）をパース
   var messageBoxes = JSON.parse(response.getContentText());
 
-  // 🏛️自治体設定シートを取得・更新
+  // 📮受信箱設定シートを取得・更新
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var configSheet = ss.getSheetByName('🏛️自治体設定') || ss.getSheetByName('自治体設定');
+  var configSheet = ss.getSheetByName('📮受信箱設定') || ss.getSheetByName('自治体設定');
 
   if (!configSheet) {
     // 設定シートがない場合は作成
-    console.log('自治体設定シートが見つかりません。新規作成します。');
+    console.log('受信箱設定シートが見つかりません。新規作成します。');
     createMunicipalityConfigSheet();
-    configSheet = ss.getSheetByName('🏛️自治体設定');
+    configSheet = ss.getSheetByName('📮受信箱設定');
   }
   
   // 対象シートをアクティブにする
@@ -37,7 +37,7 @@ function fetchMessageBoxes() {
   
   // ヘッダー行の確認（必要に応じて修正）
   if (headers.length < 4 || headers[1] !== '自治体名' || headers[3] !== '受信箱ID') {
-    console.log('自治体設定シートのヘッダーを確認・修正します。');
+    console.log('受信箱設定シートのヘッダーを確認・修正します。');
     var correctHeaders = [
       '自治体ID',
       '自治体名', 
@@ -108,12 +108,12 @@ function fetchMessageBoxes() {
   });
 
   // 取得件数をログ出力
-  console.log('自治体設定シート ' + messageBoxes.length + ' 件を更新しました');
+  console.log('受信箱設定シート ' + messageBoxes.length + ' 件を更新しました');
   
   // 処理完了をUIで通知
   var message = 'メッセージボックス一覧取得が完了しました。\n\n' +
                 '- メッセージボックス取得: ' + messageBoxes.length + ' 件\n' +
-                '- 自治体設定シートを更新\n' +
+                '- 受信箱設定シートを更新\n' +
                 '- コード表から団体コード・都道府県名を設定';
   
   var ui = SpreadsheetApp.getUi();

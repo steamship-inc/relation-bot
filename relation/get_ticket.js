@@ -7,7 +7,7 @@ function fetchOpenTickets() {
   var configs = loadMunicipalityConfigFromSheet(true);
   
   if (Object.keys(configs).length === 0) {
-    throw new Error('自治体設定が見つかりません。📮受信箱一覧更新を先に実行してください。');
+    throw new Error('受信箱設定が見つかりません。📮受信箱一覧更新を先に実行してください。');
   }
 
   // 開始前に🎫未対応チケットシートを初期化

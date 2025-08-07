@@ -36,7 +36,7 @@ function manualSendSlack() {
     }
     
     if (municipalityList.length === 0) {
-      ui.alert('エラー', '自治体設定が見つかりません。設定シートを確認してください。', ui.ButtonSet.OK);
+      ui.alert('エラー', '受信箱設定が見つかりません。設定シートを確認してください。', ui.ButtonSet.OK);
       return;
     }
     

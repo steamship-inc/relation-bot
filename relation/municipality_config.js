@@ -1,18 +1,18 @@
 /**
- * 自治体設定管理
+ * 受信箱設定管理
  * 複数自治体のre:lation連携設定を管理する
  */
 
 /**
  * 指定された自治体の設定を取得
  * @param {string} municipalityId 自治体ID
- * @return {Object} 自治体設定オブジェクト
+ * @return {Object} 受信箱設定オブジェクト
  */
 function getMunicipalityConfig(municipalityId) {
   var configs = getAllMunicipalityConfigs();
   
   if (!configs[municipalityId]) {
-    throw new Error('自治体設定が見つかりません: ' + municipalityId);
+    throw new Error('受信箱設定が見つかりません: ' + municipalityId);
   }
   
   return configs[municipalityId];
@@ -20,7 +20,7 @@ function getMunicipalityConfig(municipalityId) {
 
 /**
  * 全自治体の設定を取得（スプレッドシートから読み込み）
- * @return {Object} 全自治体設定オブジェクト
+ * @return {Object} 全受信箱設定オブジェクト
  */
 function getAllMunicipalityConfigs() {
   // スプレッドシートから設定を読み込み
@@ -30,7 +30,7 @@ function getAllMunicipalityConfigs() {
 /**
  * スプレッドシートから自治体設定を読み込み
  * @param {boolean} includeWithoutSlack Slackチャンネル未設定の自治体も含めるかどうか（デフォルト: false）
- * @return {Object} 自治体設定オブジェクト
+ * @return {Object} 受信箱設定オブジェクト
  */
 function loadMunicipalityConfigFromSheet(includeWithoutSlack) {
   if (includeWithoutSlack === undefined) {
@@ -38,11 +38,11 @@ function loadMunicipalityConfigFromSheet(includeWithoutSlack) {
   }
   
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var configSheet = ss.getSheetByName('🏛️自治体設定') || ss.getSheetByName('自治体設定');
+  var configSheet = ss.getSheetByName('📮受信箱設定') || ss.getSheetByName('自治体設定');
   
   if (!configSheet) {
     // 設定シートがない場合はエラー
-    throw new Error('自治体設定シートが見つかりません。メニュー「📮受信箱一覧更新」を実行してください。');
+    throw new Error('受信箱設定シートが見つかりません。メニュー「📮受信箱一覧更新」を実行してください。');
   }
   
   var data = configSheet.getDataRange().getValues();
@@ -76,7 +76,7 @@ function loadMunicipalityConfigFromSheet(includeWithoutSlack) {
     };
   }
   
-  console.log('スプレッドシートから ' + Object.keys(configs).length + ' 件の自治体設定を読み込みました');
+  console.log('スプレッドシートから ' + Object.keys(configs).length + ' 件の受信箱設定を読み込みました');
   
   return configs;
 }
@@ -102,12 +102,12 @@ function parseSlackNotificationFilter(jsonString) {
 }
 
 /**
- * 自治体設定シートを初期化（メニューから呼び出される基本機能）
+ * 受信箱設定シートを初期化（メニューから呼び出される基本機能）
  * @return {Object} 初期設定オブジェクト
  */
 function createMunicipalityConfigSheet() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var configSheet = ss.insertSheet('🏛️自治体設定');
+  var configSheet = ss.insertSheet('📮受信箱設定');
   
   // ヘッダー行を設定
   var headers = [
@@ -155,7 +155,7 @@ function createMunicipalityConfigSheet() {
   headerRange.setFontColor('white');
   headerRange.setFontWeight('bold');
   
-  console.log('🏛️自治体設定シートを初期化しました');
+  console.log('📮受信箱設定シートを初期化しました');
   
   // 初期設定を返す
   return loadMunicipalityConfigFromSheet();
