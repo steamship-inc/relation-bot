@@ -1,6 +1,6 @@
 /**
  * 手動Slack送信関数
- * 選択した自治体の📊openTicketシートのチケットを手動送信
+ * 選択した自治体の🎫未対応チケットシートのチケットを手動送信
  */
 function manualSendSlack() {
   var ui = SpreadsheetApp.getUi();
@@ -14,14 +14,14 @@ function manualSendSlack() {
       return;
     }
 
-    // 📊openTicketシートの存在確認
+    // 🎫未対応チケットシートの存在確認
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var openTicketSheet = ss.getSheetByName('📊openTicket');
+    var openTicketSheet = ss.getSheetByName('🎫未対応チケット');
     
     if (!openTicketSheet) {
       ui.alert('エラー', 
-               '📊openTicketシートが見つかりません。\n' +
-               '先に「🟩 re:lation」→「全自治体 openチケット取得」を実行してください。', 
+               '🎫未対応チケットシートが見つかりません。\n' +
+               '先に「🟩 re:lation」→「🎫未対応チケット取得」を実行してください。', 
                ui.ButtonSet.OK);
       return;
     }
@@ -48,14 +48,14 @@ function manualSendSlack() {
       return;
     }
     
-    // 📊openTicketシートから該当自治体のチケットを取得
+    // 🎫未対応チケットシートから該当自治体のチケットを取得
     console.log('=== ' + selectedConfig.name + 'のopenチケット取得開始（シートから） ===');
-    var tickets = getTicketsFromSheet(selectedConfig.name);
+    var tickets = getTicketsFromSheet(selectedConfig.messageBoxId);
     
     if (!tickets || tickets.length === 0) {
       ui.alert('通知なし', 
-               '「' + selectedConfig.name + '」のopenチケットが📊openTicketシートに見つかりません。\n' +
-               '最新データを取得するため「🟩 re:lation」→「全自治体 openチケット取得」を実行してください。', 
+               '「' + selectedConfig.name + '」のopenチケットが🎫未対応チケットシートに見つかりません。\n' +
+               '最新データを取得するため「🟩 re:lation」→「🎫未対応チケット取得」を実行してください。', 
                ui.ButtonSet.OK);
       return;
     }
@@ -121,55 +121,57 @@ function manualSendSlack() {
 }
 
 /**
- * 📊openTicketシートから指定自治体のチケット情報を取得
- * @param {string} municipalityName 自治体名
+ * 🎫未対応チケットシートから指定受信箱IDのチケット情報を取得
+ * @param {string} messageBoxId 受信箱ID
  * @return {Array} チケット配列
  */
-function getTicketsFromSheet(municipalityName) {
+function getTicketsFromSheet(messageBoxId) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName('📊openTicket');
+    var sheet = ss.getSheetByName('🎫未対応チケット');
     
     if (!sheet) {
-      console.log('📊openTicketシートが見つかりません');
+      console.log('🎫未対応チケットシートが見つかりません');
       return [];
     }
     
     var data = sheet.getDataRange().getValues();
     
-    if (data.length <= 1) {
-      console.log('📊openTicketシートにデータがありません');
+    if (data.length <= 5) { // ヘッダー行（5行目）を除く
+      console.log('🎫未対応チケットシートにデータがありません');
       return [];
     }
     
-    // ヘッダー行を確認（想定: ['自治体名', 'ID', 'タイトル', 'ステータス', '作成日', '更新日', 'チケット分類ID', 'ラベルID', '保留理由ID']）
-    var headers = data[0];
+    // ヘッダー行を確認（5行目、0ベースで4）
+    var headers = data[4];
     console.log('シートヘッダー: ' + headers.join(', '));
     
     var tickets = [];
     
-    // データ行をループして該当自治体のチケットを抽出
-    for (var i = 1; i < data.length; i++) {
+    // データ行をループして該当自治体のチケットを抽出（6行目以降、0ベースで5以降）
+    for (var i = 5; i < data.length; i++) {
       var row = data[i];
       
-      // 自治体名が一致するかチェック
-      if (row[0] === municipalityName) {
+      // 受信箱IDが一致するかチェック（A列: 受信箱ID）
+      if (row[0] === messageBoxId) {
         var ticket = {
-          ticket_id: row[1],
-          title: row[2] || '',
-          status_cd: row[3] || 'open',
-          created_at: row[4] || '',
-          last_updated_at: row[5] || '',
-          case_category_ids: parseIds(row[6]),
-          label_ids: parseIds(row[7]),
-          pending_reason_id: row[8] || null
+          messageBox_id: row[0], // A列: 受信箱ID
+          municipality_name: row[1], // B列: 自治体名
+          ticket_id: row[2], // C列: ID
+          title: row[3] || '', // D列: タイトル
+          status_cd: row[4] || 'open', // E列: ステータス
+          created_at: row[5] || '', // F列: 作成日
+          last_updated_at: row[6] || '', // G列: 更新日
+          case_category_ids: parseIds(row[7]), // H列: チケット分類ID
+          label_ids: parseIds(row[8]), // I列: ラベルID
+          pending_reason_id: row[9] || null // J列: 保留理由ID
         };
         
         tickets.push(ticket);
       }
     }
     
-    console.log(municipalityName + 'のチケット件数（シートから）: ' + tickets.length);
+    console.log('受信箱ID: ' + messageBoxId + 'のチケット件数（シートから）: ' + tickets.length);
     return tickets;
     
   } catch (error) {
