@@ -160,8 +160,8 @@ function getTicketsFromSheet(messageBoxId) {
           ticket_id: row[2], // C列: ID
           title: row[3] || '', // D列: タイトル
           status_cd: row[4] || 'open', // E列: ステータス
-          created_at: row[5] || '', // F列: 作成日
-          last_updated_at: row[6] || '', // G列: 更新日
+          created_at: row[5] || null, // F列: 作成日（Dateオブジェクト）
+          last_updated_at: row[6] || null, // G列: 更新日（Dateオブジェクト）
           case_category_ids: parseIds(row[7]), // H列: チケット分類ID
           label_ids: parseIds(row[8]), // I列: ラベルID
           pending_reason_id: row[9] || null // J列: 保留理由ID
@@ -754,12 +754,13 @@ function getSlackMessageTemplate(config) {
 }
 
 /**
- * 日時をフォーマットする関数
- * @param {string} isoString ISO8601形式の日時文字列
- * @return {string} フォーマットされた日時文字列 (yyyy/MM/dd HH:mm)
+ * Dateオブジェクトを読みやすい形式に変換
+ * @param {Date} date Dateオブジェクト
+ * @return {string} 読みやすい形式の日時 (yyyy/MM/dd HH:mm)
  */
-function formatDate(isoString) {
-  var date = new Date(isoString);
+function formatDate(date) {
+  if (!date || !(date instanceof Date)) return '';
+  
   return Utilities.formatDate(date, 'Asia/Tokyo', 'yyyy/MM/dd HH:mm');
 }
 
