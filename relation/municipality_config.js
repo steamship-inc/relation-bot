@@ -4,23 +4,23 @@
  */
 
 /**
- * 指定された自治体の設定を取得
- * @param {string} municipalityId 自治体ID
+ * 指定された受信箱IDの設定を取得
+ * @param {string} messageBoxId 受信箱ID
  * @return {Object} 受信箱設定オブジェクト
  */
-function getMunicipalityConfig(municipalityId) {
+function getMunicipalityConfig(messageBoxId) {
   var configs = getAllMunicipalityConfigs();
   
-  if (!configs[municipalityId]) {
-    throw new Error('受信箱設定が見つかりません: ' + municipalityId);
+  if (!configs[messageBoxId]) {
+    throw new Error('受信箱設定が見つかりません: ' + messageBoxId);
   }
   
-  return configs[municipalityId];
+  return configs[messageBoxId];
 }
 
 /**
  * 全自治体の設定を取得（スプレッドシートから読み込み）
- * @return {Object} 全受信箱設定オブジェクト
+ * @return {Object} 全受信箱設定オブジェクト（受信箱IDをキーとする）
  */
 function getAllMunicipalityConfigs() {
   // スプレッドシートから設定を読み込み
@@ -30,7 +30,7 @@ function getAllMunicipalityConfigs() {
 /**
  * スプレッドシートから自治体設定を読み込み
  * @param {boolean} includeWithoutSlack Slackチャンネル未設定の自治体も含めるかどうか（デフォルト: false）
- * @return {Object} 受信箱設定オブジェクト
+ * @return {Object} 受信箱設定オブジェクト（受信箱IDをキーとする）
  */
 function loadMunicipalityConfigFromSheet(includeWithoutSlack) {
   if (includeWithoutSlack === undefined) {
@@ -52,8 +52,9 @@ function loadMunicipalityConfigFromSheet(includeWithoutSlack) {
   // ヘッダー行をスキップして設定を読み込み（5行目の次から）
   for (var i = 5; i < data.length; i++) {
     var row = data[i];
-    if (!row[0]) continue; // 自治体IDが空の行はスキップ
+    if (!row[3]) continue; // 受信箱IDが空の行はスキップ
     
+    var messageBoxId = row[3]; // D列: 受信箱IDをキーにする
     var municipalityId = row[0];
     var slackChannel = row[4] || '';
     
@@ -64,10 +65,11 @@ function loadMunicipalityConfigFromSheet(includeWithoutSlack) {
       continue;
     }
     
-    configs[municipalityId] = {
+    configs[messageBoxId] = {
+      municipalityId: municipalityId,  // 自治体IDも保持
       name: row[1] || '',
       prefecture: row[2] || '',
-      messageBoxId: row[3] || '',
+      messageBoxId: messageBoxId,
       slackChannel: slackChannel,
       // Slack通知テンプレート
       slackTemplate: row[5] || '',
