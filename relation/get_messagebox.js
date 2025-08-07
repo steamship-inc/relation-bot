@@ -28,6 +28,9 @@ function fetchMessageBoxes() {
     createMunicipalityConfigSheet();
     configSheet = ss.getSheetByName('🏛️自治体設定');
   }
+  
+  // 対象シートをアクティブにする
+  ss.setActiveSheet(configSheet);
 
   var data = configSheet.getDataRange().getValues();
   var headers = data[0];
