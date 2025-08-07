@@ -8,7 +8,7 @@ function onOpen() {
   
   // re:lationメニュー（全自治体対応）
   ui.createMenu('🟩 re:lation')
-    .addItem('📊penチケット取得', 'fetchOpenTickets')
+    .addItem('🎫未対応チケット取得', 'fetchOpenTickets')
     .addSeparator()
     .addItem('📮受信箱更新', 'fetchMessageBoxes')
     .addItem('🏷️チケット分類取得', 'fetchCaseCategories')

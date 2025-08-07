@@ -3,45 +3,72 @@
  * メニューから呼び出される主要機能
  */
 function fetchOpenTickets() {
-  var ui = SpreadsheetApp.getUi();
-  var configs = getAllMunicipalityConfigs();
-
+  // 全自治体の設定を取得（Slackチャンネル未設定も含む）
+  var configs = loadMunicipalityConfigFromSheet(true);
   
-  // 開始前に📊openTicketシートを初期化
+  if (Object.keys(configs).length === 0) {
+    throw new Error('自治体設定が見つかりません。📮受信箱一覧更新を先に実行してください。');
+  }
+
+  // 開始前に🎫未対応チケットシートを初期化
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName('📊openTicket');
+  var sheet = ss.getSheetByName('🎫未対応チケット');
   
   if (!sheet) {
-    sheet = ss.insertSheet('📊openTicket');
+    sheet = ss.insertSheet('🎫未対応チケット');
   } else {
     sheet.clear();
   }
   
   // 対象シートをアクティブにする
   ss.setActiveSheet(sheet);
-  
-  // ヘッダー行を設定
-  sheet.appendRow(['自治体名', 'ID', 'タイトル', 'ステータス', '作成日', '更新日', 'チケット分類ID', 'ラベルID', '保留理由ID']);
+
+  // A1セルにシートタイトルを表示
+  var titleCell = sheet.getRange('A1');
+  titleCell.setValue('🎫 未対応チケット');
+  titleCell.setFontWeight('bold');
+  SpreadsheetApp.flush();
+
+  // 進捗表示用のセルを準備（C1セルに進捗を表示）
+  var progressCell = sheet.getRange('C1');
+  var totalMunicipalities = Object.keys(configs).length;
+  progressCell.setValue('進捗: 0/' + totalMunicipalities);
+  progressCell.setFontWeight('bold');
+  SpreadsheetApp.flush(); // セル更新を即座に反映
+
+  // ヘッダー行を5行目に追加
+  sheet.getRange(5, 1, 1, 9).setValues([['自治体名', 'ID', 'タイトル', 'ステータス', '作成日', '更新日', 'チケット分類ID', 'ラベルID', '保留理由ID']]);
+  sheet.getRange(5, 1, 1, 9).setFontWeight('bold');
   
   var successCount = 0;
   var errorList = [];
   var totalTickets = 0;
+  var allTicketsData = []; // 全データを格納する配列
+  var batchData = []; // 50自治体分のデータを一時保存
+  var currentRow = 6; // データ開始行（ヘッダーの下）
   
   // 各自治体のチケットを順次取得・統合
   var configIds = Object.keys(configs);
-  var totalConfigs = configIds.length;
   
   for (var i = 0; i < configIds.length; i++) {
-    var id = configIds[i];
-    var isLast = (i === configIds.length - 1);
+    var municipalityId = configIds[i];
+    var config = configs[municipalityId];
+    
+    // 50自治体ごとのバッチ開始時に進捗表示
+    if (i % 50 === 0) {
+      var batchStart = i + 1;
+      var batchEnd = Math.min(i + 50, configIds.length);
+      progressCell.setValue(batchStart + '-' + batchEnd + '/' + totalMunicipalities + ' 処理中');
+      SpreadsheetApp.flush();
+      console.log('50自治体バッチ開始: ' + batchStart + '-' + batchEnd + '/' + totalMunicipalities);
+    }
     
     try {
-      var config = configs[id];
       var tickets = fetchTicketsForMunicipality(config, 'openTickets');
       
-      // シートに追記
+      // チケットデータを配列に追加（一括処理用）
       tickets.forEach(function(ticket) {
-        var rowData = [
+        var ticketData = [
           config.name,                // 自治体名
           ticket.ticket_id,           // チケットID
           ticket.title,               // タイトル
@@ -52,40 +79,92 @@ function fetchOpenTickets() {
           ticket.label_ids ? ticket.label_ids.join(', ') : '',
           ticket.pending_reason_id || ''
         ];
-        
-        sheet.appendRow(rowData);
-        var rowIndex = sheet.getLastRow();
-        
-        // チケットURLとリンク設定
-        var ticketUrl = buildTicketUrl(config.messageBoxId, ticket.ticket_id, 'open');
-        var richText = SpreadsheetApp.newRichTextValue()
-          .setText(ticket.title)
-          .setLinkUrl(ticketUrl)
-          .build();
-        
-        sheet.getRange(rowIndex, 3).setRichTextValue(richText);
+        allTicketsData.push(ticketData);
+        batchData.push(ticketData);
       });
       
       totalTickets += tickets.length;
       successCount++;
       
-      console.log(config.name + ' のチケット取得完了: ' + tickets.length + '件');
+      // 50自治体ごとにデータ書き込み
+      if ((i + 1) % 50 === 0 || i === configIds.length - 1) {
+        // 50自治体分のデータを書き込み
+        if (batchData.length > 0) {
+          var dataRange = sheet.getRange(currentRow, 1, batchData.length, 9);
+          dataRange.setValues(batchData);
+          
+          // チケットURLとリンク設定（バッチ処理）
+          for (var j = 0; j < batchData.length; j++) {
+            var ticketRowData = batchData[j];
+            var ticketId = ticketRowData[1]; // チケットID
+            var title = ticketRowData[2]; // タイトル
+            var municipalityName = ticketRowData[0]; // 自治体名
+            
+            // 自治体設定から受信箱IDを取得
+            var ticketConfig = null;
+            for (var configKey in configs) {
+              if (configs[configKey].name === municipalityName) {
+                ticketConfig = configs[configKey];
+                break;
+              }
+            }
+            
+            if (ticketConfig) {
+              var ticketUrl = buildTicketUrl(ticketConfig.messageBoxId, ticketId, 'open');
+              var richText = SpreadsheetApp.newRichTextValue()
+                .setText(title)
+                .setLinkUrl(ticketUrl)
+                .build();
+              
+              sheet.getRange(currentRow + j, 3).setRichTextValue(richText);
+            }
+          }
+          
+          currentRow += batchData.length;
+          console.log('50自治体バッチ書き込み完了: ' + batchData.length + ' 件 (累計: ' + allTicketsData.length + ' 件)');
+          batchData = []; // バッチデータをリセット
+        }
+      }
       
-      // 取得完了後、該当自治体にSlack通知を送信
-      sendSlackToMunicipality(tickets, config, isLast);
+      // Slack通知（Slackチャンネル設定がある場合のみ）
+      if (config.slackChannel) {
+        sendSlackToMunicipality(tickets, config, false);
+      }
       
     } catch (error) {
-      errorList.push(configs[id].name + ': ' + error.toString());
-      console.error(configs[id].name + ' のチケット取得エラー: ' + error.toString());
+      errorList.push(config.name + ': ' + error.toString());
+      console.error(config.name + ' のチケット取得エラー: ' + error.toString());
       
-      // エラーの場合も最後でなければ待機（レート制限対応）
-      if (!isLast) {
-        Utilities.sleep(1500);
-      }
+      // エラーの場合は必ず進捗表示を更新
+      progressCell.setValue('進捗: ' + (i + 1) + '/' + totalMunicipalities + ' (エラー: ' + config.name + ')');
+      SpreadsheetApp.flush(); // セル更新を即座に反映
+    }
+    
+    // 50自治体ごとにレート制限回避のため待機
+    // re:lation APIは1分間に60回制限なので、50自治体ごとに60秒待機で安全
+    if ((i + 1) % 50 === 0 && i < configIds.length - 1) {
+      console.log('50自治体処理完了 - レート制限回避のため60秒待機...');
+      progressCell.setValue('API制限のため60秒待機');
+      SpreadsheetApp.flush();
+      Utilities.sleep(60000); // 60秒待機
     }
   }
   
+  // 最終確認：残りのデータがあれば書き込み
+  if (batchData.length > 0) {
+    var dataRange = sheet.getRange(currentRow, 1, batchData.length, 9);
+    dataRange.setValues(batchData);
+    console.log('最終バッチ書き込み完了: ' + batchData.length + ' 件');
+  }
+
+  // 最終完了表示
+  progressCell.setValue('完了: ' + successCount + '/' + totalMunicipalities);
+  SpreadsheetApp.flush();
+  
+  console.log('全処理完了: ' + successCount + '/' + totalMunicipalities + ' 自治体');
+  
   // 結果表示
+  var ui = SpreadsheetApp.getUi();
   var message = '全自治体チケット取得完了\n\n';
   message += '成功: ' + successCount + '件の自治体\n';
   message += '取得チケット総数: ' + totalTickets + '件\n';
