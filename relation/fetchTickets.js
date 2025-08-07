@@ -74,8 +74,8 @@ function fetchOpenTickets() {
           ticket.ticket_id,           // チケットID
           ticket.title,               // タイトル
           ticket.status_cd,           // ステータス
-          ticket.created_at,          // 作成日
-          ticket.last_updated_at,     // 更新日
+          parseDate(ticket.created_at),          // 作成日（Dateオブジェクト）
+          parseDate(ticket.last_updated_at),     // 更新日（Dateオブジェクト）
           ticket.case_category_ids ? ticket.case_category_ids.join(', ') : '',
           ticket.label_ids ? ticket.label_ids.join(', ') : '',
           ticket.pending_reason_id || ''
@@ -93,6 +93,10 @@ function fetchOpenTickets() {
         if (batchData.length > 0) {
           var dataRange = sheet.getRange(currentRow, 1, batchData.length, 10);
           dataRange.setValues(batchData);
+          
+          // 日付列（F列：作成日、G列：更新日）のフォーマットを設定
+          var dateFormatRange = sheet.getRange(currentRow, 6, batchData.length, 2); // F列とG列
+          dateFormatRange.setNumberFormat('yyyy/mm/dd hh:mm');
           
           // チケットURLとリンク設定（バッチ処理）
           for (var j = 0; j < batchData.length; j++) {
@@ -331,6 +335,27 @@ function parseIds(idsString) {
     console.error('ID解析エラー: ' + error.toString());
     return [];
   }
+}
+
+/**
+ * ISO 8601形式の日時を読みやすい形式に変換
+ * @param {string} isoString ISO 8601形式の日時文字列
+ * @return {string} 読みやすい形式の日時 (yyyy/MM/dd HH:mm)
+ */
+function formatDate(isoString) {
+  if (!isoString) return '';
+  var date = new Date(isoString);
+  return Utilities.formatDate(date, 'Asia/Tokyo', 'yyyy/MM/dd HH:mm');
+}
+
+/**
+ * ISO 8601形式の日時をDateオブジェクトに変換
+ * @param {string} isoString ISO 8601形式の日時文字列
+ * @return {Date|string} Dateオブジェクトまたは空文字列
+ */
+function parseDate(isoString) {
+  if (!isoString) return '';
+  return new Date(isoString);
 }
 
 

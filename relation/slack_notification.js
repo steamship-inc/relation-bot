@@ -756,11 +756,11 @@ function getSlackMessageTemplate(config) {
 /**
  * 日時をフォーマットする関数
  * @param {string} isoString ISO8601形式の日時文字列
- * @return {string} フォーマットされた日時文字列 (MM/dd HH:mm)
+ * @return {string} フォーマットされた日時文字列 (yyyy/MM/dd HH:mm)
  */
 function formatDate(isoString) {
   var date = new Date(isoString);
-  return Utilities.formatDate(date, 'Asia/Tokyo', 'MM/dd HH:mm');
+  return Utilities.formatDate(date, 'Asia/Tokyo', 'yyyy/MM/dd HH:mm');
 }
 
 
