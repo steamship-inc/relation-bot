@@ -73,5 +73,5 @@ function buildMessageBoxesUrl() {
  */
 function buildTicketUrl(messageBoxId, ticketId, status) {
   status = status || 'open';
-  return RELATION_BASE_URL + '/tickets/#/' + messageBoxId + '/tickets/' + status + '/p1/' + ticketId + '?order=desc&order_by';
+  return RELATION_BASE_URL + '/tickets/#/' + messageBoxId + '/tickets/' + status + '/p1/' + ticketId;
 }

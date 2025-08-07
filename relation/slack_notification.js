@@ -763,15 +763,4 @@ function formatDate(isoString) {
   return Utilities.formatDate(date, 'Asia/Tokyo', 'MM/dd HH:mm');
 }
 
-/**
- * チケット詳細URLを生成
- * @param {string} messageBoxId 受信箱ID
- * @param {string} ticketId チケットID
- * @param {string} status チケットステータス（'open' または 'closed'）
- * @return {string} チケット詳細URL
- */
-function buildTicketUrl(messageBoxId, ticketId, status) {
-  status = status || 'open';
-  var RELATION_BASE_URL = 'https://steamship.relation.biz';
-  return RELATION_BASE_URL + '/tickets/#/' + messageBoxId + '/tickets/' + status + '/p1/' + ticketId + '?order=desc&order_by';
-}
+
