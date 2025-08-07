@@ -29,15 +29,20 @@ function getAllMunicipalityConfigs() {
 
 /**
  * スプレッドシートから自治体設定を読み込み
+ * @param {boolean} includeWithoutSlack Slackチャンネル未設定の自治体も含めるかどうか（デフォルト: false）
  * @return {Object} 自治体設定オブジェクト
  */
-function loadMunicipalityConfigFromSheet() {
+function loadMunicipalityConfigFromSheet(includeWithoutSlack) {
+  if (includeWithoutSlack === undefined) {
+    includeWithoutSlack = false;
+  }
+  
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var configSheet = ss.getSheetByName('🏛️自治体設定') || ss.getSheetByName('自治体設定');
   
   if (!configSheet) {
     // 設定シートがない場合はエラー
-    throw new Error('自治体設定シートが見つかりません。メニュー「🏛️ 自治体管理」→「設定シート初期化」を実行してください。');
+    throw new Error('自治体設定シートが見つかりません。メニュー「📮受信箱一覧更新」を実行してください。');
   }
   
   var data = configSheet.getDataRange().getValues();
@@ -53,8 +58,8 @@ function loadMunicipalityConfigFromSheet() {
     var slackChannel = row[4] || '';
     
     // Slackチャンネル設定のチェック
-    if (!slackChannel.trim()) {
-      // 手動送信では未設定の自治体をスキップ（エラーにしない）
+    if (!slackChannel.trim() && !includeWithoutSlack) {
+      // Slack通知用の呼び出しでは未設定の自治体をスキップ（エラーにしない）
       console.log('Slackチャンネル未設定のためスキップ: ' + (row[1] || municipalityId));
       continue;
     }
