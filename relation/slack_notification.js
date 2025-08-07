@@ -28,91 +28,15 @@ function manualSendSlack() {
 
     // 全自治体設定を取得
     var configs = getAllMunicipalityConfigs();
-    var municipalityList = [];
     
-    // 自治体リストを作成
-    for (var id in configs) {
-      municipalityList.push(configs[id].name + ' (' + configs[id].slackChannel + ')');
-    }
-    
-    if (municipalityList.length === 0) {
+    if (Object.keys(configs).length === 0) {
       ui.alert('エラー', '受信箱設定が見つかりません。設定シートを確認してください。', ui.ButtonSet.OK);
       return;
     }
     
     // 自治体選択ダイアログ（検索可能セレクトボックス）
-    var selectedConfig = selectMunicipalityWithSearchableDialog(configs);
-    
-    if (!selectedConfig) {
-      console.log('手動送信がキャンセルされました');
-      return;
-    }
-    
-    // 🎫未対応チケットシートから該当自治体のチケットを取得
-    console.log('=== ' + selectedConfig.name + 'のopenチケット取得開始（シートから） ===');
-    var tickets = getTicketsFromSheet(selectedConfig.messageBoxId);
-    
-    if (!tickets || tickets.length === 0) {
-      ui.alert('通知なし', 
-               '「' + selectedConfig.name + '」のopenチケットが🎫未対応チケットシートに見つかりません。\n' +
-               '最新データを取得するため「🟩 re:lation」→「🎫未対応チケット取得」を実行してください。', 
-               ui.ButtonSet.OK);
-      return;
-    }
-    
-    // 確認ダイアログ
-    var confirmResult = ui.alert('手動送信確認', 
-                                '「' + selectedConfig.name + '」のopenチケット ' + tickets.length + '件を\n' +
-                                '送信先: ' + selectedConfig.slackChannel + '\n\n' +
-                                '手動送信しますか？', 
-                                ui.ButtonSet.YES_NO);
-    
-    if (confirmResult !== ui.Button.YES) {
-      console.log('手動送信がキャンセルされました');
-      return;
-    }
-    
-    // 実際のチケットで通知送信
-    console.log('=== Slack手動送信開始 ===');
-    console.log('対象自治体: ' + selectedConfig.name);
-    console.log('チケット件数: ' + tickets.length);
-    console.log('送信先: ' + selectedConfig.slackChannel);
-    
-    var sendResult = sendSlack(tickets, selectedConfig);
-    
-    // 送信結果に応じて適切なメッセージを表示
-    if (sendResult && sendResult.success) {
-      ui.alert('送信完了', 
-               '「' + selectedConfig.name + '」のopenチケット ' + tickets.length + '件の送信に成功しました。\n' +
-               '送信先: ' + selectedConfig.slackChannel, 
-               ui.ButtonSet.OK);
-    } else {
-      // 送信失敗の詳細を表示
-      var errorMessage = '「' + selectedConfig.name + '」のSlack通知送信に失敗しました。\n\n';
-      errorMessage += '送信先: ' + selectedConfig.slackChannel + '\n';
-      
-      if (sendResult && sendResult.error) {
-        errorMessage += 'エラー詳細: ' + sendResult.error + '\n';
-        if (sendResult.errorResponse) {
-          errorMessage += 'Slack APIレスポンス: ' + JSON.stringify(sendResult.errorResponse) + '\n';
-        }
-      }
-      
-      errorMessage += '\n対処方法:\n';
-      errorMessage += '1) ボットがチャンネルに招待されているか確認\n';
-      errorMessage += '2) チャンネル名が正確か確認\n';
-      errorMessage += '3) Bot Tokenが有効か確認';
-      
-      ui.alert('送信失敗', errorMessage, ui.ButtonSet.OK);
-      
-      console.error('=== Slack送信失敗詳細 ===');
-      console.error('自治体: ' + selectedConfig.name);
-      console.error('送信先: ' + selectedConfig.slackChannel);
-      if (sendResult) {
-        console.error('エラー: ' + (sendResult.error || '不明'));
-        console.error('レスポンス: ' + JSON.stringify(sendResult.errorResponse || {}));
-      }
-    }
+    // 注意: この関数は戻り値を返さず、選択後に直接 processSelectedMunicipality を呼び出す
+    selectMunicipalityWithSearchableDialog(configs);
              
   } catch (error) {
     console.error('Slack手動送信エラー: ' + error.toString());
@@ -552,11 +476,23 @@ function selectMunicipalityWithSearchableDialog(configs) {
 
             function confirmSelection() {
               if (selectedMunicipalityCode) {
+                // ボタンを無効化して重複実行を防止
+                var confirmBtn = document.getElementById('confirmBtn');
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = '処理中...';
+                
+                // 選択結果を直接渡してダイアログを閉じる
                 google.script.run
                   .withSuccessHandler(function() {
                     google.script.host.close();
                   })
-                  .setSelectedMunicipality(selectedMunicipalityCode);
+                  .withFailureHandler(function(error) {
+                    console.error('処理エラー:', error);
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = '「' + configs[selectedMunicipalityCode].name + '」に送信';
+                    alert('エラーが発生しました: ' + error);
+                  })
+                  .processSelectedMunicipality(selectedMunicipalityCode);
               }
             }
 
@@ -583,25 +519,12 @@ function selectMunicipalityWithSearchableDialog(configs) {
       .setWidth(600)
       .setHeight(500);
     
-    // 選択結果を保存するためのプロパティをリセット
-    PropertiesService.getScriptProperties().deleteProperty('selectedMunicipalityCode');
-    
     SpreadsheetApp.getUi().showModalDialog(htmlOutput, '自治体選択');
     
-    // ダイアログが閉じられるまで待機（簡易的な実装）
-    Utilities.sleep(1000);
+    console.log('ダイアログ表示完了');
     
-    // 最大30秒間、選択結果を待機
-    for (var i = 0; i < 30; i++) {
-      var selectedId = PropertiesService.getScriptProperties().getProperty('selectedMunicipalityCode');
-      if (selectedId) {
-        PropertiesService.getScriptProperties().deleteProperty('selectedMunicipalityCode');
-        return configs[selectedId] || null;
-      }
-      Utilities.sleep(1000);
-    }
-    
-    return null;
+    // ダイアログの結果を待つ必要なし - processSelectedMunicipality が直接処理する
+    return null; // この戻り値は使われない
   } catch (error) {
     console.error('検索可能ダイアログエラー: ' + error.toString());
     // フォールバック：シンプルな選択方式
@@ -610,11 +533,93 @@ function selectMunicipalityWithSearchableDialog(configs) {
 }
 
 /**
- * HTMLダイアログからの選択結果を受け取る
+ * HTMLダイアログから直接選択を処理して送信を実行
  * @param {string} municipalityCode 選択された自治体コード
  */
-function setSelectedMunicipality(municipalityCode) {
-  PropertiesService.getScriptProperties().setProperty('selectedMunicipalityCode', municipalityCode);
+function processSelectedMunicipality(municipalityCode) {
+  try {
+    console.log('自治体選択処理開始: ' + municipalityCode);
+    
+    // 全自治体設定を取得
+    var configs = getAllMunicipalityConfigs();
+    var selectedConfig = configs[municipalityCode];
+    
+    if (!selectedConfig) {
+      throw new Error('選択された自治体設定が見つかりません: ' + municipalityCode);
+    }
+    
+    console.log('=== ' + selectedConfig.name + 'のopenチケット取得開始（シートから） ===');
+    
+    // 🎫未対応チケットシートから該当自治体のチケットを取得
+    var tickets = getTicketsFromSheet(selectedConfig.messageBoxId);
+    
+    if (!tickets || tickets.length === 0) {
+      SpreadsheetApp.getUi().alert('通知なし', 
+                                  '「' + selectedConfig.name + '」のopenチケットが🎫未対応チケットシートに見つかりません。\n' +
+                                  '最新データを取得するため「🟩 re:lation」→「🎫未対応チケット取得」を実行してください。', 
+                                  SpreadsheetApp.getUi().ButtonSet.OK);
+      return;
+    }
+    
+    // 確認ダイアログ
+    var ui = SpreadsheetApp.getUi();
+    var confirmResult = ui.alert('手動送信確認', 
+                                '「' + selectedConfig.name + '」のopenチケット ' + tickets.length + '件を\n' +
+                                '送信先: ' + selectedConfig.slackChannel + '\n\n' +
+                                '手動送信しますか？', 
+                                ui.ButtonSet.YES_NO);
+    
+    if (confirmResult !== ui.Button.YES) {
+      console.log('手動送信がキャンセルされました');
+      return;
+    }
+    
+    // 実際のチケットで通知送信
+    console.log('=== Slack手動送信開始 ===');
+    console.log('対象自治体: ' + selectedConfig.name);
+    console.log('チケット件数: ' + tickets.length);
+    console.log('送信先: ' + selectedConfig.slackChannel);
+    
+    var sendResult = sendSlack(tickets, selectedConfig);
+    
+    // 送信結果に応じて適切なメッセージを表示
+    if (sendResult && sendResult.success) {
+      ui.alert('送信完了', 
+               '「' + selectedConfig.name + '」のopenチケット ' + tickets.length + '件の送信に成功しました。\n' +
+               '送信先: ' + selectedConfig.slackChannel, 
+               ui.ButtonSet.OK);
+    } else {
+      // 送信失敗の詳細を表示
+      var errorMessage = '「' + selectedConfig.name + '」のSlack通知送信に失敗しました。\n\n';
+      errorMessage += '送信先: ' + selectedConfig.slackChannel + '\n';
+      
+      if (sendResult && sendResult.error) {
+        errorMessage += 'エラー詳細: ' + sendResult.error + '\n';
+        if (sendResult.errorResponse) {
+          errorMessage += 'Slack APIレスポンス: ' + JSON.stringify(sendResult.errorResponse) + '\n';
+        }
+      }
+      
+      errorMessage += '\n対処方法:\n';
+      errorMessage += '1) ボットがチャンネルに招待されているか確認\n';
+      errorMessage += '2) チャンネル名が正確か確認\n';
+      errorMessage += '3) Bot Tokenが有効か確認';
+      
+      ui.alert('送信失敗', errorMessage, ui.ButtonSet.OK);
+      
+      console.error('=== Slack送信失敗詳細 ===');
+      console.error('自治体: ' + selectedConfig.name);
+      console.error('送信先: ' + selectedConfig.slackChannel);
+      if (sendResult) {
+        console.error('エラー: ' + (sendResult.error || '不明'));
+        console.error('レスポンス: ' + JSON.stringify(sendResult.errorResponse || {}));
+      }
+    }
+    
+  } catch (error) {
+    console.error('自治体選択処理エラー: ' + error.toString());
+    SpreadsheetApp.getUi().alert('エラー', '処理に失敗しました: ' + error.toString(), SpreadsheetApp.getUi().ButtonSet.OK);
+  }
 }
 
 /**
