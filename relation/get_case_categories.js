@@ -36,6 +36,9 @@ function fetchCaseCategories() {
   } else {
     sheet.clear();
   }
+  
+  // 対象シートをアクティブにする
+  ss.setActiveSheet(sheet);
 
   // ヘッダー行を追加
   sheet.appendRow(['チケット分類ID', 'チケット分類名', '親分類ID', 'アーカイブ済み']);

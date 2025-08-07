@@ -28,18 +28,21 @@ function fetchMessageBoxes() {
     createMunicipalityConfigSheet();
     configSheet = ss.getSheetByName('🏛️自治体設定');
   }
+  
+  // 対象シートをアクティブにする
+  ss.setActiveSheet(configSheet);
 
   var data = configSheet.getDataRange().getValues();
   var headers = data[0];
   
   // ヘッダー行の確認（必要に応じて修正）
-  if (headers.length < 4 || headers[1] !== '自治体名' || headers[3] !== 'メッセージボックスID') {
+  if (headers.length < 4 || headers[1] !== '自治体名' || headers[3] !== '受信箱ID') {
     console.log('自治体設定シートのヘッダーを確認・修正します。');
     var correctHeaders = [
       '自治体ID',
       '自治体名', 
       '都道府県',
-      'メッセージボックスID',
+      '受信箱ID',
       'Slackチャンネル',
       'Slack通知テンプレート(JSON)',
       'Slack通知フィルタ(JSON)'
@@ -84,7 +87,7 @@ function fetchMessageBoxes() {
       configSheet.getRange(rowIndex, 3).setValue(codeInfo.prefecture);
     }
     
-    // D列（メッセージボックスID）を更新
+    // D列（受信箱ID）を更新
     configSheet.getRange(rowIndex, 4).setValue(messageBox.message_box_id);
     
     // メッセージボックスURLを生成して自治体名列（B列）にリンクを設定
@@ -113,7 +116,8 @@ function fetchMessageBoxes() {
                 '- 自治体設定シートを更新\n' +
                 '- コード表から団体コード・都道府県名を設定';
   
-  SpreadsheetApp.getUi().alert('取得完了', message, SpreadsheetApp.getUi().Button.OK);
+  var ui = SpreadsheetApp.getUi();
+  ui.alert('取得完了', message, ui.ButtonSet.OK);
 }
 
 /**

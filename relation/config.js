@@ -40,7 +40,7 @@ function getRelationApiKey() {
 
 /**
  * チケット検索APIのURLを生成
- * @param {string} messageBoxId メッセージボックスID
+ * @param {string} messageBoxId 受信箱ID
  * @return {string} チケット検索API URL
  */
 function buildTicketSearchUrl(messageBoxId) {
@@ -49,7 +49,7 @@ function buildTicketSearchUrl(messageBoxId) {
 
 /**
  * チケット分類APIのURLを生成
- * @param {string} messageBoxId メッセージボックスID
+ * @param {string} messageBoxId 受信箱ID
  * @return {string} チケット分類API URL
  */
 function buildCaseCategoriesUrl(messageBoxId) {
@@ -66,7 +66,7 @@ function buildMessageBoxesUrl() {
 
 /**
  * チケット詳細URLを生成
- * @param {string} messageBoxId メッセージボックスID
+ * @param {string} messageBoxId 受信箱ID
  * @param {string} ticketId チケットID
  * @param {string} status チケットステータス（'open' または 'closed'）
  * @return {string} チケット詳細URL

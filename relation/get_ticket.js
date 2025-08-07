@@ -17,6 +17,9 @@ function fetchAllMunicipalitiesOpenTickets() {
     sheet.clear();
   }
   
+  // 対象シートをアクティブにする
+  ss.setActiveSheet(sheet);
+  
   // ヘッダー行を設定
   sheet.appendRow(['自治体名', 'ID', 'タイトル', 'ステータス', '作成日', '更新日', 'チケット分類ID', 'ラベルID', '保留理由ID']);
   
