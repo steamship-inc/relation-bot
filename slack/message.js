@@ -16,33 +16,24 @@ function createSlackMessage(tickets, config) {
   // 自治体設定からSlack通知テンプレートを取得
   var template = getSlackMessageTemplate(config);
   
-  if (totalCount === 0) {
-    return template.noTicketsMessage.replace('{municipalityName}', config.name);
-  }
-  
   var message = template.headerTemplate
     .replace('{municipalityName}', config.name)
     .replace('{totalCount}', totalCount);
   
-  // 上位指定件数のチケットを詳細表示
-  var displayCount = Math.min(totalCount, template.maxDisplayCount || 5);
-  message += template.ticketListHeader.replace('{displayCount}', displayCount);
+  // 全チケットを詳細表示
+  message += template.ticketListHeader;
   
-  for (var i = 0; i < displayCount; i++) {
+  for (var i = 0; i < totalCount; i++) {
     var ticket = tickets[i];
     var ticketUrl = buildTicketUrl(messageBoxId, ticket.ticket_id, 'open');
     
     // チケット分類とラベルの表示
-    var categoryNames = ticket.case_category_names.join(', ');
-    var labelNames = ticket.label_names.join(', ');
-    
-    // 未設定の場合は「非表示」に変更
-    if (categoryNames === '未設定') {
-      categoryNames = '非表示';
-    }
-    if (labelNames === '未設定') {
-      labelNames = '非表示';
-    }
+    var categoryNames = (ticket.case_category_names && ticket.case_category_names.length > 0) 
+      ? ticket.case_category_names.join(', ') 
+      : 'なし';
+    var labelNames = (ticket.label_names && ticket.label_names.length > 0) 
+      ? ticket.label_names.join(', ') 
+      : 'なし';
     
     var ticketLine = template.ticketItemTemplate
       .replace('{ticketUrl}', ticketUrl)
@@ -54,11 +45,6 @@ function createSlackMessage(tickets, config) {
       .replace('{labelNames}', labelNames);
     
     message += ticketLine;
-  }
-  
-  if (totalCount > (template.maxDisplayCount || 5)) {
-    var remaining = totalCount - (template.maxDisplayCount || 5);
-    message += template.remainingTicketsMessage.replace('{remainingCount}', remaining);
   }
   
   message += template.footerMessage;
@@ -74,13 +60,10 @@ function createSlackMessage(tickets, config) {
 function getSlackMessageTemplate(config) {
   // デフォルトテンプレート
   var defaultTemplate = {
-    headerTemplate: '🎫 *{municipalityName} - 未対応チケット状況報告*\n\n📊 未対応チケット数: *{totalCount}件*\n\n',
-    ticketListHeader: '📋 *最新チケット（上位{displayCount}件）:*\n',
-    ticketItemTemplate: '• <{ticketUrl}|#{ticketId}> {title}\n  作成: {createdAt} | 更新: {updatedAt}\n  分類: {categoryNames}\n  ラベル: {labelNames}\n',
-    remainingTicketsMessage: '\n... 他 {remainingCount}件のチケットがあります\n',
-    footerMessage: '\n💡 詳細はスプレッドシートをご確認ください',
-    noTicketsMessage: '✅ {municipalityName} - 未対応チケットはありません！',
-    maxDisplayCount: 5
+    headerTemplate: '🏛 *{municipalityName}*\n\n未対応チケット({totalCount}件)\n\n',
+    ticketListHeader: '🎫 *未対応チケット一覧:*\n',
+    ticketItemTemplate: '• <{ticketUrl}|#{ticketId}> {title}\n  作成: {createdAt}  更新: {updatedAt}\n  🏷️ 分類: {categoryNames}  🔖 ラベル: {labelNames}\n',
+    footerMessage: '\n💡 詳細はスプレッドシートをご確認ください'
   };
   
   // 自治体設定にSlack通知テンプレートが設定されている場合は使用
