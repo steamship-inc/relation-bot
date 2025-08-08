@@ -127,18 +127,15 @@ function createMunicipalityConfigSheet() {
   ];
   configSheet.getRange(5, 1, 1, headers.length).setValues([headers]);
   
-  // 初期データ（山鹿市）を設定
+  // デフォルトSlackテンプレート設定
   var defaultSlackTemplate = JSON.stringify({
-    headerTemplate: '🎫 *{municipalityName} - 未対応チケット状況報告*\n\n📊 未対応チケット数: *{totalCount}件*\n\n',
-    ticketListHeader: '📋 *最新チケット（上位{displayCount}件）:*\n',
-    ticketItemTemplate: '• <{ticketUrl}|#{ticketId}> {title}\n  作成: {createdAt} | 更新: {updatedAt}\n',
-    remainingTicketsMessage: '\n... 他 {remainingCount}件のチケットがあります\n',
-    footerMessage: '\n💡 詳細はスプレッドシートをご確認ください',
-    noTicketsMessage: '✅ {municipalityName} - 未対応チケットはありません！',
-    maxDisplayCount: 5
+    headerTemplate: '� *{municipalityName}*\n\n未対応チケット({totalCount}件)\n\n',
+    ticketListHeader: '🎫 *未対応チケット一覧:*\n',
+    ticketItemTemplate: '• <{ticketUrl}|#{ticketId}> {title}\n  📅 作成: {createdAt}  🔄 更新: {updatedAt}\n  🏷️ 分類: {categoryNames}\n  🔖 ラベル: {labelNames}\n',
+    footerMessage: '\n💡 詳細はスプレッドシートをご確認ください'
   });
   
-  // 山鹿市のSlack通知フィルタ例（全チケット通知）
+  // デフォルトSlack通知フィルタ設定（全チケット通知）
   var defaultSlackFilter = JSON.stringify({});
   
   // 既存の自治体データシートから初期データを取得
