@@ -13,7 +13,7 @@ function onOpen() {
     .addItem('🔔 Slack手動送信', 'manualSendSlack')
     .addToUi();
 
-  ui.createMenu('⚙️ 設定')
+  ui.createMenu('🏛 設定')
     .addItem('📮 受信箱取得', 'fetchMessageBoxes')
     .addItem('🏷 ️チケット分類取得', 'fetchCaseCategories')
     .addItem('🏷️ ラベル取得', 'fetchLabels')
