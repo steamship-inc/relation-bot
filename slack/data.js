@@ -45,8 +45,8 @@ function getTicketsFromSheet(messageBoxId) {
           status_cd: row[4] || 'open', // E列: ステータス
           created_at: row[5] || null, // F列: 作成日（Dateオブジェクト）
           last_updated_at: row[6] || null, // G列: 更新日（Dateオブジェクト）
-          case_category_names: row[7] && row[7].toString().trim() ? row[7].toString().split(', ').filter(function(name) { return name; }) : ['未設定'], // H列: チケット分類名
-          label_names: row[8] && row[8].toString().trim() ? row[8].toString().split(', ').filter(function(name) { return name; }) : ['未設定'], // I列: ラベル名
+          case_category_names: row[7] && row[7].toString().trim() ? row[7].toString().split(', ').filter(function(name) { return name; }) : ['なし'], // H列: チケット分類名
+          label_names: row[8] && row[8].toString().trim() ? row[8].toString().split(', ').filter(function(name) { return name; }) : ['なし'], // I列: ラベル名
           pending_reason_id: row[9] || null // J列: 保留理由ID
         };
         
