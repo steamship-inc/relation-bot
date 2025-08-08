@@ -129,8 +129,8 @@ function createMunicipalityConfigSheet() {
   
   // デフォルトSlackテンプレート設定
   var defaultSlackTemplate = JSON.stringify({
-    headerTemplate: '🏛️ *{municipalityName}*\n\n未対応チケット({totalCount}件)\n\n',
-    ticketListHeader: '🎫 *未対応チケット一覧:*\n',
+    headerTemplate: '🏛️ *{municipalityName}*\n\n' +
+                    '🎫 *未対応チケット({totalCount}件)*\n\n',
     ticketItemTemplate: '• <{ticketUrl}|#{ticketId}> {title}\n  📅 作成: {createdAt}  🔄 更新: {updatedAt}\n  🏷️ 分類: {categoryNames}\n  🔖 ラベル: {labelNames}\n',
     footerMessage: '\n💡 詳細はスプレッドシートをご確認ください'
   });
