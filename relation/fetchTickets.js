@@ -37,7 +37,7 @@ function fetchOpenTickets() {
   SpreadsheetApp.flush(); // セル更新を即座に反映
 
   // ヘッダー行を5行目に追加
-  sheet.getRange(5, 1, 1, 10).setValues([['受信箱ID', '自治体名', 'ID', 'タイトル', 'ステータス', '作成日', '更新日', 'チケット分類ID', 'ラベルID', '保留理由ID']]);
+  sheet.getRange(5, 1, 1, 10).setValues([['受信箱ID', '自治体名', 'ID', 'タイトル', 'ステータス', '作成日', '更新日', 'チケット分類', 'ラベル', '保留理由ID']]);
   sheet.getRange(5, 1, 1, 10).setFontWeight('bold');
   
   var successCount = 0;
@@ -66,8 +66,30 @@ function fetchOpenTickets() {
     try {
       var tickets = fetchTicketsForMunicipality(config, 'openTickets');
       
+      // チケット分類とラベルの名前を取得
+      var caseCategoriesMap = getCaseCategoriesMap(config.messageBoxId);
+      var labelsMap = getLabelsMap(config.messageBoxId);
+      
+      console.log('自治体: ' + config.name + ', チケット分類数: ' + Object.keys(caseCategoriesMap).length + ', ラベル数: ' + Object.keys(labelsMap).length);
+      
       // チケットデータを配列に追加（一括処理用）
       tickets.forEach(function(ticket) {
+        var caseCategoryIds = ticket.case_category_ids || [];
+        var labelIds = ticket.label_ids || [];
+        
+        // デバッグ用ログ：ラベルIDをログ出力
+        if (labelIds.length > 0) {
+          console.log('チケットID: ' + ticket.ticket_id + ', ラベルID: ' + JSON.stringify(labelIds));
+        }
+        
+        var categoryNames = getCategoryNames(caseCategoryIds, caseCategoriesMap);
+        var labelNames = getLabelNames(labelIds, labelsMap);
+        
+        // デバッグ用ログ：ラベル名の変換結果をログ出力
+        if (labelIds.length > 0) {
+          console.log('ラベルID -> ラベル名変換: ' + JSON.stringify(labelIds) + ' -> ' + JSON.stringify(labelNames));
+        }
+        
         var ticketData = [
           config.messageBoxId,        // 受信箱ID
           config.name,                // 自治体名
@@ -76,9 +98,9 @@ function fetchOpenTickets() {
           ticket.status_cd,           // ステータス
           parseDate(ticket.created_at),          // 作成日（Dateオブジェクト）
           parseDate(ticket.last_updated_at),     // 更新日（Dateオブジェクト）
-          ticket.case_category_ids ? ticket.case_category_ids.join(', ') : '',
-          ticket.label_ids ? ticket.label_ids.join(', ') : '',
-          ticket.pending_reason_id || ''
+          categoryNames.join(', '),   // チケット分類名
+          labelNames.join(', '),      // ラベル名
+          ticket.pending_reason_id || ''         // 保留理由ID
         ];
         allTicketsData.push(ticketData);
         batchData.push(ticketData);
@@ -356,6 +378,161 @@ function formatDate(isoString) {
 function parseDate(isoString) {
   if (!isoString) return '';
   return new Date(isoString);
+}
+
+/**
+ * 指定受信箱IDのチケット分類マップを取得
+ * @param {string} messageBoxId 受信箱ID
+ * @return {Object} チケット分類マップ（ID → 名前）
+ */
+function getCaseCategoriesMap(messageBoxId) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('🏷️チケット分類');
+    
+    if (!sheet) {
+      console.log('🏷️チケット分類シートが見つかりません');
+      return {};
+    }
+    
+    var data = sheet.getDataRange().getValues();
+    if (data.length <= 5) {
+      console.log('🏷️チケット分類シートにデータがありません');
+      return {};
+    }
+    
+    var categoriesMap = {};
+    
+    // データ行をループ（6行目以降、0ベースで5以降）
+    for (var i = 5; i < data.length; i++) {
+      var row = data[i];
+      
+      // 受信箱IDが一致するかチェック（A列: 受信箱ID）
+      if (row[0] && row[0].toString() === messageBoxId.toString()) {
+        var categoryId = row[2]; // C列: チケット分類ID
+        var categoryName = row[3]; // D列: チケット分類名
+        
+        if (categoryId && categoryName) {
+          // 数値IDと文字列IDの両方に対応
+          var numericId = parseInt(categoryId);
+          if (!isNaN(numericId)) {
+            categoriesMap[numericId] = categoryName;
+          }
+          categoriesMap[categoryId] = categoryName;
+          categoriesMap[categoryId.toString()] = categoryName;
+        }
+      }
+    }
+    
+    console.log('チケット分類マップ取得完了: ' + Object.keys(categoriesMap).length + '件');
+    return categoriesMap;
+    
+  } catch (error) {
+    console.error('チケット分類マップ取得エラー: ' + error.toString());
+    return {};
+  }
+}
+
+/**
+ * 指定受信箱IDのラベルマップを取得
+ * @param {string} messageBoxId 受信箱ID
+ * @return {Object} ラベルマップ（ID → 名前）
+ */
+function getLabelsMap(messageBoxId) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('🏷️ラベル');
+    
+    if (!sheet) {
+      console.log('🏷️ラベルシートが見つかりません');
+      return {};
+    }
+    
+    var data = sheet.getDataRange().getValues();
+    if (data.length <= 5) {
+      console.log('🏷️ラベルシートにデータがありません');
+      return {};
+    }
+    
+    var labelsMap = {};
+    
+    // データ行をループ（6行目以降、0ベースで5以降）
+    for (var i = 5; i < data.length; i++) {
+      var row = data[i];
+      
+      // 受信箱IDが一致するかチェック（A列: 受信箱ID）
+      if (row[0] && row[0].toString() === messageBoxId.toString()) {
+        var labelId = row[2]; // C列: ラベルID
+        var labelName = row[3]; // D列: ラベル名
+        
+        if (labelId && labelName) {
+          // 数値IDと文字列IDの両方に対応
+          var numericId = parseInt(labelId);
+          if (!isNaN(numericId)) {
+            labelsMap[numericId] = labelName;
+          }
+          labelsMap[labelId] = labelName;
+          labelsMap[labelId.toString()] = labelName;
+        }
+      }
+    }
+    
+    console.log('ラベルマップ取得完了: ' + Object.keys(labelsMap).length + '件');
+    if (Object.keys(labelsMap).length > 0) {
+      console.log('ラベルマップサンプル: ' + JSON.stringify(Object.keys(labelsMap).slice(0, 5).reduce(function(obj, key) {
+        obj[key] = labelsMap[key];
+        return obj;
+      }, {})));
+    }
+    return labelsMap;
+    
+  } catch (error) {
+    console.error('ラベルマップ取得エラー: ' + error.toString());
+    return {};
+  }
+}
+
+/**
+ * チケット分類IDから分類名の配列を取得
+ * @param {Array} categoryIds チケット分類ID配列
+ * @param {Object} categoriesMap チケット分類マップ
+ * @return {Array} チケット分類名配列
+ */
+function getCategoryNames(categoryIds, categoriesMap) {
+  if (!categoryIds || categoryIds.length === 0) {
+    return [];
+  }
+  
+  return categoryIds.map(function(categoryId) {
+    // 文字列と数値の両方でカテゴリマップを検索
+    var categoryName = categoriesMap[categoryId] || categoriesMap[parseInt(categoryId)] || categoriesMap[categoryId.toString()];
+    return categoryName || 'ID:' + categoryId; // 名前が見つからない場合はIDを表示
+  });
+}
+
+/**
+ * ラベルIDからラベル名の配列を取得
+ * @param {Array} labelIds ラベルID配列
+ * @param {Object} labelsMap ラベルマップ
+ * @return {Array} ラベル名配列
+ */
+function getLabelNames(labelIds, labelsMap) {
+  if (!labelIds || labelIds.length === 0) {
+    return [];
+  }
+  
+  return labelIds.map(function(labelId) {
+    // 文字列と数値の両方でラベルマップを検索
+    var labelName = labelsMap[labelId] || labelsMap[parseInt(labelId)] || labelsMap[labelId.toString()];
+    
+    // デバッグ用ログ：ID変換の詳細
+    if (!labelName) {
+      console.log('ラベル名が見つかりません - ID: ' + labelId + ' (type: ' + typeof labelId + ')');
+      console.log('利用可能なラベルID: ' + Object.keys(labelsMap).slice(0, 10).join(', '));
+    }
+    
+    return labelName || 'ID:' + labelId; // 名前が見つからない場合はIDを表示
+  });
 }
 
 

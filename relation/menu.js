@@ -9,10 +9,10 @@ function onOpen() {
   // re:lationメニュー（全自治体対応）
   ui.createMenu('🟩 re:lation')
     .addItem('🎫未対応チケット取得', 'fetchOpenTickets')
+    .addItem('🔔Slack手動送信', 'manualSendSlack')
     .addSeparator()
     .addItem('📮受信箱取得', 'fetchMessageBoxes')
     .addItem('🏷️チケット分類取得', 'fetchCaseCategories')
-    .addSeparator()
-    .addItem('🔔Slack手動送信', 'manualSendSlack')
+    .addItem('🏷️ラベル取得', 'fetchLabels')
     .addToUi();
 }
