@@ -99,53 +99,167 @@ menu.js
             └── 設定シート初期化
 ```
 
-## データフロー
+## データフロー（メニュー別シーケンス）
 
-### 全自治体チケット一括取得フロー
+### 1. 全自治体 openチケット取得
 ```mermaid
-graph TB
-    A[スプレッドシート起動] --> B[onOpen: メニュー表示]
-    B --> C[🎫未対応チケット取得 選択]
-    C --> D[fetchOpenTickets実行]
+sequenceDiagram
+    participant User as ユーザー
+    participant UI as スプレッドシートUI
+    participant FT as fetchTickets.js
+    participant MC as municipality_config.js
+    participant C as config.js
+    participant API as re:lation API
+    participant SN as slack_notification.js
+    participant Sheet as シート
+
+    User->>UI: 🎫未対応チケット取得 選択
+    UI->>FT: fetchOpenTickets()
+    FT->>MC: loadMunicipalityConfigFromSheet()
+    MC->>Sheet: 📮受信箱シート読み込み
+    Sheet-->>MC: 自治体設定データ
+    MC-->>FT: 全自治体設定
     
-    D --> E[📮受信箱シートから設定読み込み]
-    E --> F[🎫未対応チケットシート初期化]
+    FT->>Sheet: 🎫未対応チケットシート初期化
     
-    F --> G[各自治体を50件バッチで処理]
-    G --> H[re:lation API呼び出し]
-    H --> I[チケット分類・ラベル名変換]
-    I --> J[シートにデータ蓄積]
+    loop 各自治体（50件バッチ）
+        FT->>C: buildTicketSearchUrl()
+        C-->>FT: API URL
+        FT->>API: チケット検索リクエスト
+        API-->>FT: チケットデータ
+        FT->>FT: チケット分類・ラベル名変換
+        FT->>FT: データ蓄積（メモリ）
+        
+        alt Slackチャンネル設定あり
+            FT->>SN: sendSlackToMunicipality()
+            SN->>SN: applySlackNotificationFilter()
+            SN->>SN: createSlackMessage()
+            SN->>API: Slack通知送信
+        end
+        
+        alt 50件バッチ完了
+            FT->>Sheet: 一括データ書き込み
+            FT->>FT: 60秒待機（レート制限対策）
+        end
+    end
     
-    J --> K{Slackチャンネル設定あり?}
-    K -->|Yes| L[Slack通知送信]
-    K -->|No| M[次の自治体へ]
-    L --> M
-    
-    M --> N{50件バッチ完了?}
-    N -->|Yes| O[一括データ書き込み]
-    N -->|No| G
-    O --> P[60秒待機（レート制限対策）]
-    P --> Q{全自治体完了?}
-    Q -->|No| G
-    Q -->|Yes| R[処理完了・結果表示]
+    FT-->>UI: 処理完了・結果表示
+    UI-->>User: 完了通知
 ```
 
-### Slack手動通知フロー
+### 2. メッセージボックス一覧取得
 ```mermaid
-graph TB
-    A[🔔Slack手動送信 選択] --> B[manualSendSlack実行]
-    B --> C[SLACK_BOT_TOKEN確認]
-    C --> D[🎫未対応チケットシート確認]
-    D --> E[検索可能自治体選択UI表示]
+sequenceDiagram
+    participant User as ユーザー
+    participant UI as スプレッドシートUI
+    participant FMB as fetchMessageBoxes.js
+    participant C as config.js
+    participant API as re:lation API
+    participant Sheet as シート
+
+    User->>UI: メッセージボックス一覧取得 選択
+    UI->>FMB: fetchMessageBoxes()
+    FMB->>C: buildMessageBoxesUrl()
+    C-->>FMB: API URL
+    FMB->>API: メッセージボックス一覧取得
+    API-->>FMB: メッセージボックスデータ
+    FMB->>FMB: 自治体名マッピング処理
+    FMB->>Sheet: 📮受信箱シートに書き込み
+    FMB-->>UI: 処理完了
+    UI-->>User: 完了通知
+```
+
+### 3. チケット分類一覧取得
+```mermaid
+sequenceDiagram
+    participant User as ユーザー
+    participant UI as スプレッドシートUI
+    participant FCC as fetchCaseCategories.js
+    participant C as config.js
+    participant API as re:lation API
+    participant Sheet as シート
+
+    User->>UI: チケット分類一覧取得 選択
+    UI->>FCC: fetchCaseCategories()
     
-    E --> F[ユーザーが自治体選択]
-    F --> G[該当自治体のチケットをシートから取得]
+    loop 各メッセージボックス
+        FCC->>C: buildCaseCategoriesUrl()
+        C-->>FCC: API URL
+        FCC->>API: チケット分類取得
+        API-->>FCC: 分類データ
+    end
     
-    G --> H{チケット存在?}
-    H -->|Yes| I[Slackメッセージ作成]
-    H -->|No| J[送信スキップ通知]
+    FCC->>Sheet: 🏷️チケット分類シートに書き込み
+    FCC-->>UI: 処理完了
+    UI-->>User: 完了通知
+```
+
+### 4. シートからSlack通知
+```mermaid
+sequenceDiagram
+    participant User as ユーザー
+    participant UI as スプレッドシートUI
+    participant SN as slack_notification.js
+    participant Sheet as シート
+    participant Slack as Slack API
+
+    User->>UI: 🔔シートからSlack通知 選択
+    UI->>SN: manualSendSlack()
+    SN->>SN: SLACK_BOT_TOKEN確認
+    SN->>Sheet: 🎫未対応チケットシート確認
+    Sheet-->>SN: シート存在確認
+    SN->>SN: selectMunicipalityWithSearchableDialog()
+    SN-->>UI: 検索可能自治体選択UI表示
+    UI-->>User: 自治体選択画面
     
-    I --> K[Slack通知送信]
-    K --> L[送信完了ログ出力]
+    User->>UI: 自治体選択
+    UI->>SN: processSelectedMunicipality()
+    SN->>Sheet: 該当自治体チケット取得
+    Sheet-->>SN: チケットデータ
+    
+    alt チケット存在
+        SN->>SN: createSlackMessage()
+        SN->>Slack: Slack通知送信
+        Slack-->>SN: 送信結果
+        SN-->>UI: 送信完了ログ
+    else チケット無し
+        SN-->>UI: 送信スキップ通知
+    end
+    
+    UI-->>User: 処理結果表示
+```
+
+### 5. Slack通知テスト
+```mermaid
+sequenceDiagram
+    participant User as ユーザー
+    participant UI as スプレッドシートUI
+    participant SN as slack_notification.js
+    participant Slack as Slack API
+
+    User->>UI: Slack通知テスト 選択
+    UI->>SN: sendSlack()（テスト用ダミーデータ）
+    SN->>SN: createSlackMessage()
+    SN->>Slack: テスト通知送信
+    Slack-->>SN: 送信結果
+    SN-->>UI: テスト結果表示
+    UI-->>User: テスト完了通知
+```
+
+### 6. 設定シート初期化
+```mermaid
+sequenceDiagram
+    participant User as ユーザー
+    participant UI as スプレッドシートUI
+    participant MC as municipality_config.js
+    participant Sheet as シート
+
+    User->>UI: 設定シート初期化 選択
+    UI->>MC: createMunicipalityConfigSheet()
+    MC->>Sheet: 📮受信箱シート作成
+    MC->>Sheet: ヘッダー行設定
+    MC->>Sheet: サンプルデータ挿入
+    MC-->>UI: 初期化完了
+    UI-->>User: 完了通知
 ```
 
