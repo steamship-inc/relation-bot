@@ -20,9 +20,6 @@ function createSlackMessage(tickets, config) {
     .replace('{municipalityName}', config.name)
     .replace('{totalCount}', totalCount);
   
-  // 全チケットを詳細表示
-  message += template.ticketListHeader;
-  
   for (var i = 0; i < totalCount; i++) {
     var ticket = tickets[i];
     var ticketUrl = buildTicketUrl(messageBoxId, ticket.ticket_id, 'open');
