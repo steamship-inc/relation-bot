@@ -154,9 +154,9 @@ function fetchOpenTickets() {
       }
       
       // Slack通知（Slackチャンネル設定がある場合のみ）
-      if (config.slackChannel) {
-        sendSlackToMunicipality(tickets, config, false);
-      }
+      // if (config.slackChannel) {
+      //   sendSlackToMunicipality(tickets, config, false);
+      // }
       
     } catch (error) {
       errorList.push(config.name + ': ' + error.toString());
