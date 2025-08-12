@@ -37,8 +37,8 @@ function fetchOpenTickets() {
   SpreadsheetApp.flush(); // セル更新を即座に反映
 
   // ヘッダー行を5行目に追加
-  sheet.getRange(5, 1, 1, 10).setValues([['受信箱ID', '自治体名', 'ID', 'タイトル', 'ステータス', '作成日', '更新日', 'チケット分類', 'ラベル', '保留理由ID']]);
-  sheet.getRange(5, 1, 1, 10).setFontWeight('bold');
+  sheet.getRange(5, 1, 1, 12).setValues([['受信箱ID', '自治体名', 'ID', 'タイトル', 'ステータス', '担当者', '作成日', '更新日', 'チケット分類', 'ラベル', '保留理由ID', '色']]);
+  sheet.getRange(5, 1, 1, 12).setFontWeight('bold');
   
   var successCount = 0;
   var errorList = [];
@@ -72,6 +72,14 @@ function fetchOpenTickets() {
       
       console.log('自治体: ' + config.name + ', チケット分類数: ' + Object.keys(caseCategoriesMap).length + ', ラベル数: ' + Object.keys(labelsMap).length);
       
+      // デバッグ用：最初のチケットの全プロパティを出力（APIレスポンス確認用）
+      if (tickets.length > 0) {
+        console.log('=== API レスポンス サンプル（' + config.name + '）===');
+        console.log('チケット数: ' + tickets.length);
+        console.log('最初のチケットの全プロパティ: ' + JSON.stringify(tickets[0], null, 2));
+        console.log('=====================================');
+      }
+      
       // チケットデータを配列に追加（一括処理用）
       tickets.forEach(function(ticket) {
         var caseCategoryIds = ticket.case_category_ids || [];
@@ -96,11 +104,13 @@ function fetchOpenTickets() {
           ticket.ticket_id,           // チケットID
           ticket.title,               // タイトル
           ticket.status_cd,           // ステータス
+          ticket.assignee || '',      // 担当者のメンション名
           parseDate(ticket.created_at),          // 作成日（Dateオブジェクト）
           parseDate(ticket.last_updated_at),     // 更新日（Dateオブジェクト）
           categoryNames.join(', '),   // チケット分類名
           labelNames.join(', '),      // ラベル名
-          ticket.pending_reason_id || ''         // 保留理由ID
+          ticket.pending_reason_id || '',        // 保留理由ID
+          ticket.color_cd || ''       // 色
         ];
         allTicketsData.push(ticketData);
         batchData.push(ticketData);
@@ -113,11 +123,11 @@ function fetchOpenTickets() {
       if ((i + 1) % 50 === 0 || i === configIds.length - 1) {
         // 50自治体分のデータを書き込み
         if (batchData.length > 0) {
-          var dataRange = sheet.getRange(currentRow, 1, batchData.length, 10);
+          var dataRange = sheet.getRange(currentRow, 1, batchData.length, 12);
           dataRange.setValues(batchData);
           
-          // 日付列（F列：作成日、G列：更新日）のフォーマットを設定
-          var dateFormatRange = sheet.getRange(currentRow, 6, batchData.length, 2); // F列とG列
+          // 日付列（G列：作成日、H列：更新日）のフォーマットを設定
+          var dateFormatRange = sheet.getRange(currentRow, 7, batchData.length, 2); // G列とH列
           dateFormatRange.setNumberFormat('yyyy/mm/dd hh:mm');
           
           // チケットURLとリンク設定（バッチ処理）
@@ -179,7 +189,7 @@ function fetchOpenTickets() {
   
   // 最終確認：残りのデータがあれば書き込み
   if (batchData.length > 0) {
-    var dataRange = sheet.getRange(currentRow, 1, batchData.length, 10);
+    var dataRange = sheet.getRange(currentRow, 1, batchData.length, 12);
     dataRange.setValues(batchData);
     console.log('最終バッチ書き込み完了: ' + batchData.length + ' 件');
   }
