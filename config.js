@@ -84,3 +84,13 @@ function buildTicketUrl(messageBoxId, ticketId, status) {
   status = status || 'open';
   return RELATION_BASE_URL + '/tickets/#/' + messageBoxId + '/tickets/' + status + '/p1/' + ticketId;
 }
+
+/**
+ * チケット詳細APIのURLを生成
+ * @param {string} messageBoxId 受信箱ID
+ * @param {string} ticketId チケットID
+ * @return {string} チケット詳細API URL
+ */
+function buildTicketDetailUrl(messageBoxId, ticketId) {
+  return RELATION_BASE_URL + '/api/v2/' + messageBoxId + '/tickets/' + ticketId;
+}

@@ -130,7 +130,7 @@ function fetchOpenTickets() {
           var dateFormatRange = sheet.getRange(currentRow, 7, batchData.length, 2); // G列とH列
           dateFormatRange.setNumberFormat('yyyy/mm/dd hh:mm');
           
-          // チケットURLとリンク設定（バッチ処理）
+          // チケットIDとタイトルにリンクを設定
           for (var j = 0; j < batchData.length; j++) {
             var ticketRowData = batchData[j];
             var ticketId = ticketRowData[2]; // チケットID
@@ -147,13 +147,18 @@ function fetchOpenTickets() {
             }
             
             if (ticketConfig) {
+              // D列（タイトル）にre:lationへのリンクを設定
               var ticketUrl = buildTicketUrl(ticketConfig.messageBoxId, ticketId, 'open');
-              var richText = SpreadsheetApp.newRichTextValue()
+              var richTextTitle = SpreadsheetApp.newRichTextValue()
                 .setText(title)
                 .setLinkUrl(ticketUrl)
                 .build();
               
-              sheet.getRange(currentRow + j, 4).setRichTextValue(richText);
+              sheet.getRange(currentRow + j, 4).setRichTextValue(richTextTitle);
+              
+              // C列（チケットID）にメモを追加して詳細表示のヒントを提供
+              var ticketIdCell = sheet.getRange(currentRow + j, 3);
+              ticketIdCell.setNote('詳細を表示するには、この行を選択してメニューから「チケット詳細表示」を実行してください。\n受信箱ID: ' + ticketConfig.messageBoxId + '\nチケットID: ' + ticketId);
             }
           }
           
@@ -543,6 +548,235 @@ function getLabelNames(labelIds, labelsMap) {
     
     return labelName || 'ID:' + labelId; // 名前が見つからない場合はIDを表示
   });
+}
+
+/**
+ * チケット詳細を取得してモーダルで表示
+ * @param {string} messageBoxId 受信箱ID
+ * @param {string} ticketId チケットID
+ */
+function showTicketDetail(messageBoxId, ticketId) {
+  try {
+    // チケット詳細をAPIから取得
+    var ticketDetail = fetchTicketDetail(messageBoxId, ticketId);
+    
+    // モーダル用のHTMLを生成
+    var html = createTicketDetailHtml(ticketDetail, messageBoxId);
+    
+    // モーダルダイアログを表示
+    var htmlOutput = HtmlService.createHtmlOutput(html)
+      .setWidth(800)
+      .setHeight(600);
+    
+    SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'チケット詳細 - ID: ' + ticketId);
+    
+  } catch (error) {
+    console.error('チケット詳細取得エラー: ' + error.toString());
+    SpreadsheetApp.getUi().alert('エラー', 'チケット詳細の取得に失敗しました。\n\n' + error.toString(), SpreadsheetApp.getUi().ButtonSet.OK);
+  }
+}
+
+/**
+ * 選択した行のチケット詳細を表示（メニューから呼び出し）
+ */
+function showSelectedTicketDetail() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getActiveSheet();
+  var selection = sheet.getActiveRange();
+  
+  // 🎫未対応チケットシートかチェック
+  if (sheet.getName() !== '🎫未対応チケット') {
+    SpreadsheetApp.getUi().alert('エラー', '🎫未対応チケットシートで実行してください。', SpreadsheetApp.getUi().ButtonSet.OK);
+    return;
+  }
+  
+  // 選択した行を取得
+  var row = selection.getRow();
+  
+  // ヘッダー行より下かチェック
+  if (row < 6) {
+    SpreadsheetApp.getUi().alert('エラー', 'チケットデータの行を選択してください。', SpreadsheetApp.getUi().ButtonSet.OK);
+    return;
+  }
+  
+  try {
+    // A列：受信箱ID、C列：チケットIDを取得
+    var messageBoxId = sheet.getRange(row, 1).getValue();
+    var ticketId = sheet.getRange(row, 3).getValue();
+    
+    if (!messageBoxId || !ticketId) {
+      SpreadsheetApp.getUi().alert('エラー', '受信箱IDまたはチケットIDが見つかりません。', SpreadsheetApp.getUi().ButtonSet.OK);
+      return;
+    }
+    
+    // チケット詳細を表示
+    showTicketDetail(messageBoxId.toString(), ticketId.toString());
+    
+  } catch (error) {
+    console.error('選択行からのチケット詳細表示エラー: ' + error.toString());
+    SpreadsheetApp.getUi().alert('エラー', 'チケット詳細の表示に失敗しました。\n\n' + error.toString(), SpreadsheetApp.getUi().ButtonSet.OK);
+  }
+}
+
+/**
+ * チケット詳細をAPIから取得
+ * @param {string} messageBoxId 受信箱ID
+ * @param {string} ticketId チケットID
+ * @return {Object} チケット詳細オブジェクト
+ */
+function fetchTicketDetail(messageBoxId, ticketId) {
+  // APIキーを取得
+  var apiKey = getRelationApiKey();
+  
+  // チケット詳細APIのエンドポイント
+  var apiUrl = buildTicketDetailUrl(messageBoxId, ticketId);
+  
+  console.log('チケット詳細API呼び出し: ' + apiUrl);
+  
+  // APIリクエスト（GET）
+  var response = UrlFetchApp.fetch(apiUrl, {
+    method: 'get',
+    headers: {
+      'Authorization': 'Bearer ' + apiKey,
+      'Content-Type': 'application/json'
+    }
+  });
+  
+  // レスポンスをパース
+  var ticketDetail = JSON.parse(response.getContentText());
+  
+  console.log('チケット詳細取得成功: ' + JSON.stringify(ticketDetail, null, 2));
+  
+  return ticketDetail;
+}
+
+/**
+ * チケット詳細のHTMLを生成
+ * @param {Object} ticket チケット詳細オブジェクト
+ * @param {string} messageBoxId 受信箱ID
+ * @return {string} HTML文字列
+ */
+function createTicketDetailHtml(ticket, messageBoxId) {
+  // チケット分類とラベルの名前を取得
+  var caseCategoriesMap = getCaseCategoriesMap(messageBoxId);
+  var labelsMap = getLabelsMap(messageBoxId);
+  
+  var categoryNames = getCategoryNames(ticket.case_category_ids || [], caseCategoriesMap);
+  var labelNames = getLabelNames(ticket.label_ids || [], labelsMap);
+  
+  // メッセージ数を取得
+  var messageCount = ticket.messages ? ticket.messages.length : 0;
+  
+  // HTMLエスケープ関数
+  function escapeHtml(unsafe) {
+    if (typeof unsafe !== 'string') return '';
+    return unsafe
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+  
+  // メッセージ一覧のHTML生成
+  var messagesHtml = '';
+  if (ticket.messages && ticket.messages.length > 0) {
+    for (var i = 0; i < ticket.messages.length; i++) {
+      var msg = ticket.messages[i];
+      var index = i + 1;
+      
+      var messageBody = msg.body || '';
+      if (messageBody.length > 200) {
+        messageBody = messageBody.substring(0, 200) + '...';
+      }
+      
+      messagesHtml += '<div class="message-item">';
+      messagesHtml += '<div class="message-header">';
+      messagesHtml += index + '. ' + escapeHtml(msg.title || '件名なし');
+      messagesHtml += ' <span style="color: #999; font-size: 0.9em;">';
+      messagesHtml += '(' + formatDate(msg.created_at) + ' | ' + escapeHtml(msg.method_cd || '') + ' | ' + escapeHtml(msg.action_cd || '') + ')';
+      messagesHtml += '</span>';
+      messagesHtml += '</div>';
+      
+      messagesHtml += '<div><strong>From:</strong> ' + escapeHtml(msg.from || '') + '</div>';
+      messagesHtml += '<div><strong>To:</strong> ' + escapeHtml(msg.to || '') + '</div>';
+      
+      if (msg.cc) {
+        messagesHtml += '<div><strong>Cc:</strong> ' + escapeHtml(msg.cc) + '</div>';
+      }
+      
+      messagesHtml += '<div class="message-body">' + escapeHtml(messageBody) + '</div>';
+      
+      if (msg.comments && msg.comments.length > 0) {
+        messagesHtml += '<div style="margin-top: 10px;"><strong>コメント:</strong> ' + msg.comments.length + '件</div>';
+      }
+      
+      if (msg.attachments && msg.attachments.length > 0) {
+        messagesHtml += '<div><strong>添付ファイル:</strong> ' + msg.attachments.length + '件</div>';
+      }
+      
+      messagesHtml += '</div>';
+    }
+  } else {
+    messagesHtml = '<div>メッセージがありません</div>';
+  }
+  
+  var html = '<!DOCTYPE html>' +
+    '<html>' +
+    '<head>' +
+    '<style>' +
+    'body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }' +
+    '.header { background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px; }' +
+    '.section { margin-bottom: 20px; }' +
+    '.section h3 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 5px; }' +
+    '.field { margin-bottom: 10px; }' +
+    '.field strong { display: inline-block; width: 120px; color: #555; }' +
+    '.message-list { max-height: 400px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background-color: #fafafa; }' +
+    '.message-item { background-color: #fff; margin-bottom: 10px; padding: 10px; border-radius: 3px; border-left: 3px solid #007cba; }' +
+    '.message-header { font-weight: bold; color: #333; margin-bottom: 5px; }' +
+    '.message-body { color: #666; max-height: 120px; overflow-y: auto; margin-top: 8px; padding: 8px; background-color: #f9f9f9; border-radius: 3px; }' +
+    '.close-btn { text-align: center; margin-top: 20px; }' +
+    '.close-btn button { background-color: #007cba; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }' +
+    '.close-btn button:hover { background-color: #005a8b; }' +
+    '</style>' +
+    '</head>' +
+    '<body>' +
+    '<div class="header">' +
+    '<h2>🎫 ' + escapeHtml(ticket.title || 'タイトルなし') + '</h2>' +
+    '<div class="field"><strong>チケットID:</strong> ' + escapeHtml(ticket.ticket_id || '') + '</div>' +
+    '<div class="field"><strong>ステータス:</strong> ' + escapeHtml(ticket.status_cd || '') + '</div>' +
+    '<div class="field"><strong>担当者:</strong> ' + escapeHtml(ticket.assignee || '未割り当て') + '</div>' +
+    '</div>' +
+    
+    '<div class="section">' +
+    '<h3>📋 基本情報</h3>' +
+    '<div class="field"><strong>作成日:</strong> ' + escapeHtml(formatDate(ticket.created_at) || '') + '</div>' +
+    '<div class="field"><strong>更新日:</strong> ' + escapeHtml(formatDate(ticket.last_updated_at) || '') + '</div>' +
+    '<div class="field"><strong>色:</strong> ' + escapeHtml(ticket.color_cd || 'なし') + '</div>' +
+    '<div class="field"><strong>保留理由ID:</strong> ' + escapeHtml(ticket.pending_reason_id || 'なし') + '</div>' +
+    '</div>' +
+    
+    '<div class="section">' +
+    '<h3>🏷️ 分類・ラベル</h3>' +
+    '<div class="field"><strong>チケット分類:</strong> ' + escapeHtml(categoryNames.join(', ') || 'なし') + '</div>' +
+    '<div class="field"><strong>ラベル:</strong> ' + escapeHtml(labelNames.join(', ') || 'なし') + '</div>' +
+    '</div>' +
+    
+    '<div class="section">' +
+    '<h3>💬 メッセージ (' + messageCount + '件)</h3>' +
+    '<div class="message-list">' +
+    messagesHtml +
+    '</div>' +
+    '</div>' +
+    
+    '<div class="close-btn">' +
+    '<button onclick="google.script.host.close()">閉じる</button>' +
+    '</div>' +
+    
+    '</body>' +
+    '</html>';
+  
+  return html;
 }
 
 
