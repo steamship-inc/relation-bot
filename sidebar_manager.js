@@ -15,7 +15,7 @@ function showTicketDetailSidebar() {
     // HTMLファイルからサイドバーを作成
     var htmlOutput = HtmlService.createHtmlOutputFromFile('ticket_detail_sidebar')
       .setTitle('🎫 チケット詳細')
-      .setWidth(350);
+      .setWidth(900);
     
     SpreadsheetApp.getUi().showSidebar(htmlOutput);
     
@@ -76,21 +76,8 @@ function getSidebarTicketData() {
       return { type: 'empty' };
     }
     
-    // チケット詳細を取得
+    // チケット詳細を取得（メッセージのみ）
     var ticketDetail = fetchTicketDetailWithCaching(messageBoxId.toString(), ticketId.toString());
-    
-    // チケット分類とラベルの名前を取得
-    var caseCategoriesMap = getCaseCategoriesMap(messageBoxId);
-    var labelsMap = getLabelsMap(messageBoxId);
-    
-    // 分類名とラベル名を追加
-    if (ticketDetail.case_category_ids && ticketDetail.case_category_ids.length > 0) {
-      ticketDetail.case_category_names = getCategoryNames(ticketDetail.case_category_ids, caseCategoriesMap);
-    }
-    
-    if (ticketDetail.label_ids && ticketDetail.label_ids.length > 0) {
-      ticketDetail.label_names = getLabelNames(ticketDetail.label_ids, labelsMap);
-    }
     
     return {
       type: 'detail',

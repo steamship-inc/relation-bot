@@ -81,55 +81,6 @@
       font-style: italic;
     }
 
-    .status-badge {
-      display: inline-block;
-      padding: 4px 8px;
-      border-radius: 12px;
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .status-open {
-      background: #e3f2fd;
-      color: #1976d2;
-    }
-
-    .status-in-progress {
-      background: #fff3e0;
-      color: #f57c00;
-    }
-
-    .status-closed {
-      background: #e8f5e8;
-      color: #388e3c;
-    }
-
-    .tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 4px;
-    }
-
-    .tag {
-      background: #e1f5fe;
-      color: #0277bd;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 11px;
-      font-weight: 500;
-    }
-
-    .assignee {
-      background: #f3e5f5;
-      color: #7b1fa2;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-weight: 500;
-    }
-
     .date {
       color: #666;
       font-size: 12px;
@@ -219,12 +170,12 @@
 <body>
   <div id="content">
     <div class="empty-state">
-      <div class="icon">🎫</div>
+      <div class="icon">💬</div>
       <div>チケットの行を選択してください</div>
       <div style="margin-top: 8px; font-size: 11px; color: #999;">
         🎫未対応チケットシートで<br>
         任意の行をクリックすると<br>
-        詳細が表示されます
+        メッセージ履歴が表示されます
       </div>
     </div>
   </div>
@@ -264,12 +215,12 @@
       currentTicketId = null;
       document.getElementById('content').innerHTML = `
         <div class="empty-state">
-          <div class="icon">🎫</div>
+          <div class="icon">💬</div>
           <div>チケットの行を選択してください</div>
           <div style="margin-top: 8px; font-size: 11px; color: #999;">
             🎫未対応チケットシートで<br>
             任意の行をクリックすると<br>
-            詳細が表示されます
+            メッセージ履歴が表示されます
           </div>
         </div>
       `;
@@ -298,24 +249,6 @@
       }
     }
 
-    function getStatusClass(statusCd) {
-      switch(statusCd) {
-        case 'open': return 'status-open';
-        case 'in-progress': return 'status-in-progress';
-        case 'closed': return 'status-closed';
-        default: return 'status-open';
-      }
-    }
-
-    function getStatusText(statusCd) {
-      switch(statusCd) {
-        case 'open': return '未対応';
-        case 'in-progress': return '対応中';
-        case 'closed': return '完了';
-        default: return statusCd || '不明';
-      }
-    }
-
     function updateTicketDetail(ticketDetail, municipalityName, messageBoxId) {
       isLoading = false;
       
@@ -330,122 +263,55 @@
       }
       currentTicketId = ticketDetail.ticket_id;
 
-      var statusClass = getStatusClass(ticketDetail.status_cd);
-      var statusText = getStatusText(ticketDetail.status_cd);
-
-      var categoriesHtml = '';
-      if (ticketDetail.case_category_names && ticketDetail.case_category_names.length > 0) {
-        categoriesHtml = ticketDetail.case_category_names.map(function(name) {
-          return '<span class="tag">' + escapeHtml(name) + '</span>';
-        }).join('');
-      }
-
-      var labelsHtml = '';
-      if (ticketDetail.label_names && ticketDetail.label_names.length > 0) {
-        labelsHtml = ticketDetail.label_names.map(function(name) {
-          return '<span class="tag">' + escapeHtml(name) + '</span>';
-        }).join('');
-      }
-
       var messagesHtml = '';
       if (ticketDetail.messages && ticketDetail.messages.length > 0) {
-        messagesHtml = '<div class="field-group">';
-        messagesHtml += '<div class="field-label">メッセージ内容</div>';
-        messagesHtml += '<div class="message-content">';
-        
         ticketDetail.messages.forEach(function(message, index) {
-          if (index > 0) messagesHtml += '<hr style="margin: 12px 0; border: none; border-top: 1px solid #ddd;">';
-          messagesHtml += '<div style="margin-bottom: 8px;">';
-          messagesHtml += '<strong>' + formatDate(message.created_at) + '</strong>';
-          if (message.sender_name) {
-            messagesHtml += ' - ' + escapeHtml(message.sender_name);
-          }
+          if (index > 0) messagesHtml += '<hr style="margin: 16px 0; border: none; border-top: 1px solid #ddd;">';
+          
+          messagesHtml += '<div style="margin-bottom: 16px;">';
+          messagesHtml += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">';
+          messagesHtml += '<strong style="color: #333;">' + (index + 1) + '. ' + escapeHtml(message.title || 'メッセージ') + '</strong>';
+          messagesHtml += '<span style="color: #666; font-size: 11px;">' + formatDate(message.created_at) + '</span>';
           messagesHtml += '</div>';
-          messagesHtml += '<div>' + escapeHtml(message.body || '').replace(/\n/g, '<br>') + '</div>';
+          
+          if (message.from) {
+            messagesHtml += '<div style="font-size: 12px; color: #666; margin-bottom: 4px;"><strong>差出人:</strong> ' + escapeHtml(message.from) + '</div>';
+          }
+          
+          if (message.to) {
+            messagesHtml += '<div style="font-size: 12px; color: #666; margin-bottom: 8px;"><strong>宛先:</strong> ' + escapeHtml(message.to) + '</div>';
+          }
+          
+          messagesHtml += '<div style="background: #f8f9fa; padding: 12px; border-radius: 4px; border-left: 3px solid #4285f4;">';
+          messagesHtml += escapeHtml(message.body || '内容なし').replace(/\n/g, '<br>');
+          messagesHtml += '</div>';
+          
+          if (message.attachments && message.attachments.length > 0) {
+            messagesHtml += '<div style="margin-top: 8px; font-size: 12px; color: #666;">📎 添付ファイル: ' + message.attachments.length + '件</div>';
+          }
+          
+          messagesHtml += '</div>';
         });
-        
-        messagesHtml += '</div>';
-        messagesHtml += '</div>';
+      } else {
+        messagesHtml = '<div style="text-align: center; color: #999; padding: 40px;">メッセージがありません</div>';
       }
 
-      var ticketUrl = 'https://www.relation.jp/tickets/#/' + messageBoxId + '/tickets/open/p1';
+      var ticketUrl = 'https://www.relation.jp/tickets/#/' + messageBoxId + '/tickets/open/p1/' + ticketDetail.ticket_id;
 
       document.getElementById('content').innerHTML = `
         <div class="ticket-detail">
           <div class="ticket-header">
-            <div class="ticket-title">${escapeHtml(ticketDetail.title || '')}</div>
+            <div class="ticket-title">💬 メッセージ履歴</div>
             <div class="ticket-meta">
-              ID: ${escapeHtml(ticketDetail.ticket_id || '')} | 
-              <span class="status-badge ${statusClass}">${statusText}</span>
+              ID: ${escapeHtml(ticketDetail.ticket_id || '')} | ${escapeHtml(municipalityName || '')}
             </div>
           </div>
 
           <div class="ticket-body">
-            <div class="municipality-info">
-              <div class="municipality-name">📍 ${escapeHtml(municipalityName || '')}</div>
-            </div>
-
-            <div class="field-group">
-              <div class="field-label">担当者</div>
-              <div class="field-value ${!ticketDetail.assignee ? 'empty' : ''}">
-                ${ticketDetail.assignee ? '<span class="assignee">' + escapeHtml(ticketDetail.assignee) + '</span>' : '未割り当て'}
-              </div>
-            </div>
-
-            <div class="field-group">
-              <div class="field-label">作成日時</div>
-              <div class="field-value">
-                <span class="date">${formatDate(ticketDetail.created_at)}</span>
-              </div>
-            </div>
-
-            <div class="field-group">
-              <div class="field-label">最終更新日時</div>
-              <div class="field-value">
-                <span class="date">${formatDate(ticketDetail.last_updated_at)}</span>
-              </div>
-            </div>
-
-            ${categoriesHtml ? `
-            <div class="field-group">
-              <div class="field-label">チケット分類</div>
-              <div class="field-value">
-                <div class="tags">${categoriesHtml}</div>
-              </div>
-            </div>
-            ` : ''}
-
-            ${labelsHtml ? `
-            <div class="field-group">
-              <div class="field-label">ラベル</div>
-              <div class="field-value">
-                <div class="tags">${labelsHtml}</div>
-              </div>
-            </div>
-            ` : ''}
-
-            ${ticketDetail.priority_level ? `
-            <div class="field-group">
-              <div class="field-label">優先度</div>
-              <div class="field-value">${escapeHtml(ticketDetail.priority_level)}</div>
-            </div>
-            ` : ''}
-
-            ${ticketDetail.color_cd ? `
-            <div class="field-group">
-              <div class="field-label">色分類</div>
-              <div class="field-value">${escapeHtml(ticketDetail.color_cd)}</div>
-            </div>
-            ` : ''}
-
             ${messagesHtml}
 
-            <a href="${ticketUrl}" target="_blank" class="external-link">
-              🔗 re:lationで開く
-            </a>
-
             <div class="refresh-hint">
-              💡 別の行を選択すると詳細が切り替わります
+              💡 別の行を選択するとメッセージが切り替わります
             </div>
           </div>
         </div>
