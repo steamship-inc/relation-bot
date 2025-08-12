@@ -40,6 +40,9 @@ function fetchOpenTickets() {
   sheet.getRange(5, 1, 1, 12).setValues([['受信箱ID', '自治体名', 'ID', 'タイトル', 'ステータス', '担当者', '作成日', '更新日', 'チケット分類', 'ラベル', '保留理由ID', '色']]);
   sheet.getRange(5, 1, 1, 12).setFontWeight('bold');
   
+  // チケット詳細サイドバーボタンを作成
+  createTicketDetailButton(sheet);
+  
   var successCount = 0;
   var errorList = [];
   var totalTickets = 0;
@@ -155,10 +158,6 @@ function fetchOpenTickets() {
                 .build();
               
               sheet.getRange(currentRow + j, 4).setRichTextValue(richTextTitle);
-              
-              // C列（チケットID）にメモを追加して詳細表示のヒントを提供
-              var ticketIdCell = sheet.getRange(currentRow + j, 3);
-              ticketIdCell.setNote('詳細を表示するには、この行を選択してメニューから「チケット詳細表示」を実行してください。\n受信箱ID: ' + ticketConfig.messageBoxId + '\nチケットID: ' + ticketId);
             }
           }
           
@@ -550,73 +549,7 @@ function getLabelNames(labelIds, labelsMap) {
   });
 }
 
-/**
- * チケット詳細を取得してモーダルで表示
- * @param {string} messageBoxId 受信箱ID
- * @param {string} ticketId チケットID
- */
-function showTicketDetail(messageBoxId, ticketId) {
-  try {
-    // チケット詳細をAPIから取得
-    var ticketDetail = fetchTicketDetail(messageBoxId, ticketId);
-    
-    // モーダル用のHTMLを生成
-    var html = createTicketDetailHtml(ticketDetail, messageBoxId);
-    
-    // モーダルダイアログを表示
-    var htmlOutput = HtmlService.createHtmlOutput(html)
-      .setWidth(800)
-      .setHeight(600);
-    
-    SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'チケット詳細 - ID: ' + ticketId);
-    
-  } catch (error) {
-    console.error('チケット詳細取得エラー: ' + error.toString());
-    SpreadsheetApp.getUi().alert('エラー', 'チケット詳細の取得に失敗しました。\n\n' + error.toString(), SpreadsheetApp.getUi().ButtonSet.OK);
-  }
-}
 
-/**
- * 選択した行のチケット詳細を表示（メニューから呼び出し）
- */
-function showSelectedTicketDetail() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getActiveSheet();
-  var selection = sheet.getActiveRange();
-  
-  // 🎫未対応チケットシートかチェック
-  if (sheet.getName() !== '🎫未対応チケット') {
-    SpreadsheetApp.getUi().alert('エラー', '🎫未対応チケットシートで実行してください。', SpreadsheetApp.getUi().ButtonSet.OK);
-    return;
-  }
-  
-  // 選択した行を取得
-  var row = selection.getRow();
-  
-  // ヘッダー行より下かチェック
-  if (row < 6) {
-    SpreadsheetApp.getUi().alert('エラー', 'チケットデータの行を選択してください。', SpreadsheetApp.getUi().ButtonSet.OK);
-    return;
-  }
-  
-  try {
-    // A列：受信箱ID、C列：チケットIDを取得
-    var messageBoxId = sheet.getRange(row, 1).getValue();
-    var ticketId = sheet.getRange(row, 3).getValue();
-    
-    if (!messageBoxId || !ticketId) {
-      SpreadsheetApp.getUi().alert('エラー', '受信箱IDまたはチケットIDが見つかりません。', SpreadsheetApp.getUi().ButtonSet.OK);
-      return;
-    }
-    
-    // チケット詳細を表示
-    showTicketDetail(messageBoxId.toString(), ticketId.toString());
-    
-  } catch (error) {
-    console.error('選択行からのチケット詳細表示エラー: ' + error.toString());
-    SpreadsheetApp.getUi().alert('エラー', 'チケット詳細の表示に失敗しました。\n\n' + error.toString(), SpreadsheetApp.getUi().ButtonSet.OK);
-  }
-}
 
 /**
  * チケット詳細をAPIから取得
@@ -651,132 +584,71 @@ function fetchTicketDetail(messageBoxId, ticketId) {
 }
 
 /**
- * チケット詳細のHTMLを生成
- * @param {Object} ticket チケット詳細オブジェクト
- * @param {string} messageBoxId 受信箱ID
- * @return {string} HTML文字列
+ * シート上にチケット詳細サイドバーボタンを作成
+ * @param {Sheet} sheet 対象シート
  */
-function createTicketDetailHtml(ticket, messageBoxId) {
-  // チケット分類とラベルの名前を取得
-  var caseCategoriesMap = getCaseCategoriesMap(messageBoxId);
-  var labelsMap = getLabelsMap(messageBoxId);
-  
-  var categoryNames = getCategoryNames(ticket.case_category_ids || [], caseCategoriesMap);
-  var labelNames = getLabelNames(ticket.label_ids || [], labelsMap);
-  
-  // メッセージ数を取得
-  var messageCount = ticket.messages ? ticket.messages.length : 0;
-  
-  // HTMLエスケープ関数
-  function escapeHtml(unsafe) {
-    if (typeof unsafe !== 'string') return '';
-    return unsafe
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-  }
-  
-  // メッセージ一覧のHTML生成
-  var messagesHtml = '';
-  if (ticket.messages && ticket.messages.length > 0) {
-    for (var i = 0; i < ticket.messages.length; i++) {
-      var msg = ticket.messages[i];
-      var index = i + 1;
-      
-      var messageBody = msg.body || '';
-      if (messageBody.length > 200) {
-        messageBody = messageBody.substring(0, 200) + '...';
-      }
-      
-      messagesHtml += '<div class="message-item">';
-      messagesHtml += '<div class="message-header">';
-      messagesHtml += index + '. ' + escapeHtml(msg.title || '件名なし');
-      messagesHtml += ' <span style="color: #999; font-size: 0.9em;">';
-      messagesHtml += '(' + formatDate(msg.created_at) + ' | ' + escapeHtml(msg.method_cd || '') + ' | ' + escapeHtml(msg.action_cd || '') + ')';
-      messagesHtml += '</span>';
-      messagesHtml += '</div>';
-      
-      messagesHtml += '<div><strong>From:</strong> ' + escapeHtml(msg.from || '') + '</div>';
-      messagesHtml += '<div><strong>To:</strong> ' + escapeHtml(msg.to || '') + '</div>';
-      
-      if (msg.cc) {
-        messagesHtml += '<div><strong>Cc:</strong> ' + escapeHtml(msg.cc) + '</div>';
-      }
-      
-      messagesHtml += '<div class="message-body">' + escapeHtml(messageBody) + '</div>';
-      
-      if (msg.comments && msg.comments.length > 0) {
-        messagesHtml += '<div style="margin-top: 10px;"><strong>コメント:</strong> ' + msg.comments.length + '件</div>';
-      }
-      
-      if (msg.attachments && msg.attachments.length > 0) {
-        messagesHtml += '<div><strong>添付ファイル:</strong> ' + msg.attachments.length + '件</div>';
-      }
-      
-      messagesHtml += '</div>';
+function createTicketDetailButton(sheet) {
+  // 既存のボタンを削除（再作成時の重複を防ぐ）
+  var drawings = sheet.getDrawings();
+  for (var i = 0; i < drawings.length; i++) {
+    var drawing = drawings[i];
+    if (drawing.getOnAction() === 'showTicketDetailSidebarFromButton') {
+      drawing.remove();
     }
-  } else {
-    messagesHtml = '<div>メッセージがありません</div>';
   }
   
-  var html = '<!DOCTYPE html>' +
-    '<html>' +
-    '<head>' +
-    '<style>' +
-    'body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }' +
-    '.header { background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px; }' +
-    '.section { margin-bottom: 20px; }' +
-    '.section h3 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 5px; }' +
-    '.field { margin-bottom: 10px; }' +
-    '.field strong { display: inline-block; width: 120px; color: #555; }' +
-    '.message-list { max-height: 400px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background-color: #fafafa; }' +
-    '.message-item { background-color: #fff; margin-bottom: 10px; padding: 10px; border-radius: 3px; border-left: 3px solid #007cba; }' +
-    '.message-header { font-weight: bold; color: #333; margin-bottom: 5px; }' +
-    '.message-body { color: #666; max-height: 120px; overflow-y: auto; margin-top: 8px; padding: 8px; background-color: #f9f9f9; border-radius: 3px; }' +
-    '.close-btn { text-align: center; margin-top: 20px; }' +
-    '.close-btn button { background-color: #007cba; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }' +
-    '.close-btn button:hover { background-color: #005a8b; }' +
-    '</style>' +
-    '</head>' +
-    '<body>' +
-    '<div class="header">' +
-    '<h2>🎫 ' + escapeHtml(ticket.title || 'タイトルなし') + '</h2>' +
-    '<div class="field"><strong>チケットID:</strong> ' + escapeHtml(ticket.ticket_id || '') + '</div>' +
-    '<div class="field"><strong>ステータス:</strong> ' + escapeHtml(ticket.status_cd || '') + '</div>' +
-    '<div class="field"><strong>担当者:</strong> ' + escapeHtml(ticket.assignee || '未割り当て') + '</div>' +
-    '</div>' +
+  try {
+    // ボタン用の図形を作成（E1セルの位置に配置）
+    var button = sheet.insertShape(SpreadsheetApp.ShapeType.RECTANGLE, 350, 5, 200, 35);
     
-    '<div class="section">' +
-    '<h3>📋 基本情報</h3>' +
-    '<div class="field"><strong>作成日:</strong> ' + escapeHtml(formatDate(ticket.created_at) || '') + '</div>' +
-    '<div class="field"><strong>更新日:</strong> ' + escapeHtml(formatDate(ticket.last_updated_at) || '') + '</div>' +
-    '<div class="field"><strong>色:</strong> ' + escapeHtml(ticket.color_cd || 'なし') + '</div>' +
-    '<div class="field"><strong>保留理由ID:</strong> ' + escapeHtml(ticket.pending_reason_id || 'なし') + '</div>' +
-    '</div>' +
+    // ボタンのスタイルを設定
+    button.setFill('#34a853');  // Google Greenの背景色
+    button.setBorder('#137333', 2);  // 境界線
     
-    '<div class="section">' +
-    '<h3>🏷️ 分類・ラベル</h3>' +
-    '<div class="field"><strong>チケット分類:</strong> ' + escapeHtml(categoryNames.join(', ') || 'なし') + '</div>' +
-    '<div class="field"><strong>ラベル:</strong> ' + escapeHtml(labelNames.join(', ') || 'なし') + '</div>' +
-    '</div>' +
+    // ボタンのテキストを設定
+    button.setText('📋 サイドバーで詳細表示');
+    button.setTextStyle(SpreadsheetApp.newTextStyle()
+      .setForegroundColor('#ffffff')
+      .setFontSize(12)
+      .setBold(true)
+      .build());
     
-    '<div class="section">' +
-    '<h3>💬 メッセージ (' + messageCount + '件)</h3>' +
-    '<div class="message-list">' +
-    messagesHtml +
-    '</div>' +
-    '</div>' +
+    // クリック時に実行する関数を設定
+    button.setOnAction('showTicketDetailSidebarFromButton');
     
-    '<div class="close-btn">' +
-    '<button onclick="google.script.host.close()">閉じる</button>' +
-    '</div>' +
+    console.log('チケット詳細サイドバーボタンを作成しました');
     
-    '</body>' +
-    '</html>';
+  } catch (error) {
+    console.error('ボタン作成エラー: ' + error.toString());
+    // ボタン作成に失敗した場合はログに記録するだけで処理を継続
+  }
+}
+
+/**
+ * ボタンクリック時に呼び出される関数
+ * チケット詳細サイドバーを表示
+ */
+function showTicketDetailSidebarFromButton() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getActiveSheet();
   
-  return html;
+  // 🎫未対応チケットシートかチェック
+  if (sheet.getName() !== '🎫未対応チケット') {
+    SpreadsheetApp.getUi().alert('エラー', '🎫未対応チケットシートで実行してください。', SpreadsheetApp.getUi().ButtonSet.OK);
+    return;
+  }
+  
+  try {
+    // サイドバーを表示
+    showTicketDetailSidebar();
+    
+    // 使い方のヒントを表示
+    SpreadsheetApp.getUi().alert('サイドバー表示', 'チケット詳細サイドバーを表示しました。\n\n💡 使い方:\n1. チケット一覧から見たい行をクリック\n2. サイドバーに詳細が自動表示されます\n3. 別の行を選択すると詳細が切り替わります', SpreadsheetApp.getUi().ButtonSet.OK);
+    
+  } catch (error) {
+    console.error('サイドバー表示エラー: ' + error.toString());
+    SpreadsheetApp.getUi().alert('エラー', 'サイドバーの表示に失敗しました。\n\n' + error.toString(), SpreadsheetApp.getUi().ButtonSet.OK);
+  }
 }
 
 
