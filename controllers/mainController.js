@@ -178,17 +178,105 @@ function testRefactoredFunctions() {
 }
 
 /**
- * パフォーマンス比較テスト
- * 旧版と新版の処理時間を比較
+ * 包括的なシステムヘルスチェック（新機能）
+ * Phase 5で追加された高度な診断機能
  */
-function performanceComparison() {
+function advancedSystemCheck() {
   try {
-    console.log('=== パフォーマンス比較テスト開始 ===');
+    console.log('=== 高度システムチェック開始 ===');
+    
+    // 構造化ログを使用
+    StructuredLogger.info('高度システムチェック開始', {
+      component: 'mainController',
+      function: 'advancedSystemCheck'
+    });
+    
+    var measureId = StructuredLogger.startPerformanceMeasure('advancedSystemCheck');
+    
+    // 包括的なヘルスチェック
+    var healthCheck = comprehensiveHealthCheck();
+    
+    // 設定最適化の提案
+    var optimizationResult = autoOptimizeConfiguration({ dryRun: true });
+    
+    // 結果のログ出力
+    StructuredLogger.info('ヘルスチェック完了', {
+      overall: healthCheck.overall,
+      componentCount: Object.keys(healthCheck.components).length,
+      recommendationCount: healthCheck.recommendations.length
+    });
+    
+    StructuredLogger.endPerformanceMeasure(measureId, {
+      healthStatus: healthCheck.overall,
+      optimizationSuggestions: optimizationResult.applied.length
+    });
+    
+    // UIに結果表示
+    var ui = SpreadsheetApp.getUi();
+    var statusIcon = healthCheck.overall === 'healthy' ? '✅' : 
+                    healthCheck.overall === 'warning' ? '⚠️' : '❌';
+    
+    var message = statusIcon + ' システム状況: ' + getHealthStatusDescription(healthCheck.overall) + '\\n\\n';
+    
+    // コンポーネントごとの状況
+    message += '【コンポーネント状況】\\n';
+    if (healthCheck.components.configuration) {
+      message += '設定: ' + getStatusDescription(healthCheck.components.configuration.status) + '\\n';
+    }
+    if (healthCheck.components.municipalities) {
+      message += '自治体: ' + healthCheck.components.municipalities.valid + '/' + 
+                 healthCheck.components.municipalities.total + ' 有効\\n';
+    }
+    
+    // 最適化提案
+    if (optimizationResult.applied.length > 0) {
+      message += '\\n【最適化提案】\\n';
+      optimizationResult.applied.slice(0, 3).forEach(function(suggestion) {
+        message += '• ' + suggestion + '\\n';
+      });
+    }
+    
+    message += '\\n詳細はコンソールログをご確認ください。';
+    
+    ui.alert('高度システムチェック完了', message, ui.ButtonSet.OK);
+    
+    console.log('=== 高度システムチェック完了 ===');
+    
+    return {
+      status: 'success',
+      healthCheck: healthCheck,
+      optimization: optimizationResult
+    };
+    
+  } catch (error) {
+    StructuredLogger.error('高度システムチェックエラー', {
+      error: error.toString(),
+      stack: error.stack
+    });
+    
+    handleError(error, 'advancedSystemCheck', 
+      '高度システムチェックでエラーが発生しました。'
+    );
+    
+    return {
+      status: 'error',
+      error: error.toString()
+    };
+  }
+}
+
+/**
+ * パフォーマンステスト（改良版）
+ * 新しいログシステムを使用した詳細なパフォーマンス分析
+ */
+function performanceTest() {
+  try {
+    StructuredLogger.info('パフォーマンステスト開始');
     
     var ui = SpreadsheetApp.getUi();
     var response = ui.alert(
-      'パフォーマンス比較', 
-      'この機能は開発用です。実行しますか？', 
+      'パフォーマンステスト', 
+      'この機能は開発・最適化用です。実行しますか？', 
       ui.ButtonSet.YES_NO
     );
     
@@ -196,99 +284,124 @@ function performanceComparison() {
       return;
     }
     
-    // 小さなデータセットでテスト
-    var startTime = new Date();
+    var testResults = [];
     
-    // リファクタリング版を実行
-    console.log('リファクタリング版実行開始');
-    fetchOpenTickets_v2();
+    // テスト1: 設定検証のパフォーマンス
+    var measureId1 = StructuredLogger.startPerformanceMeasure('configValidation');
+    var configValidation = validateAndOptimizeConfiguration();
+    StructuredLogger.endPerformanceMeasure(measureId1, {
+      issueCount: configValidation.issues.length
+    });
+    testResults.push('設定検証: 完了');
     
-    var endTime = new Date();
-    var executionTime = endTime - startTime;
+    // テスト2: 自治体設定検証のパフォーマンス
+    var measureId2 = StructuredLogger.startPerformanceMeasure('municipalityValidation');
+    var municipalityValidation = validateAllMunicipalityConfigs();
+    StructuredLogger.endPerformanceMeasure(measureId2, {
+      municipalityCount: municipalityValidation.total
+    });
+    testResults.push('自治体設定検証: ' + municipalityValidation.total + '件処理');
     
-    console.log('実行時間: ' + executionTime + 'ms');
+    // テスト3: メモリ使用量チェック
+    var measureId3 = StructuredLogger.startPerformanceMeasure('memoryCheck');
+    var memoryInfo = DebugHelper.checkMemoryUsage();
+    StructuredLogger.endPerformanceMeasure(measureId3, memoryInfo);
+    testResults.push('メモリチェック: 完了');
     
-    ui.alert('パフォーマンステスト完了', 
-      '実行時間: ' + (executionTime / 1000) + '秒\\n\\n' +
-      '詳細はログを確認してください。', 
-      ui.ButtonSet.OK);
+    // 結果表示
+    var message = 'パフォーマンステスト完了\\n\\n' +
+                  testResults.join('\\n') + '\\n\\n' +
+                  '詳細な測定結果はコンソールログを確認してください。';
     
-    console.log('=== パフォーマンス比較テスト完了 ===');
+    ui.alert('パフォーマンステスト完了', message, ui.ButtonSet.OK);
+    
+    StructuredLogger.info('パフォーマンステスト完了', {
+      testCount: testResults.length
+    });
     
   } catch (error) {
-    handleError(error, 'performanceComparison', 
-      'パフォーマンス比較テストでエラーが発生しました。'
+    StructuredLogger.error('パフォーマンステストエラー', {
+      error: error.toString()
+    });
+    
+    handleError(error, 'performanceTest', 
+      'パフォーマンステストでエラーが発生しました。'
     );
   }
 }
 
 /**
- * システム診断機能
+ * システム診断機能（改良版）
  * 設定とデータの整合性をチェック
  */
 function systemDiagnostics() {
   try {
     console.log('=== システム診断開始 ===');
     
-    var diagnosticResults = [];
+    // 包括的なヘルスチェックを実行
+    var healthCheck = comprehensiveHealthCheck();
     
-    // 1. API設定チェック
-    try {
-      var apiKey = getRelationApiKey();
-      diagnosticResults.push('✓ APIキー設定OK');
-    } catch (error) {
-      diagnosticResults.push('✗ APIキー設定エラー: ' + error.toString());
-    }
+    // 設定最適化レポートを生成
+    var configReport = generateConfigurationReport();
     
-    // 2. 自治体設定チェック
-    try {
-      var configs = ConfigService.getMunicipalityConfigs(true);
-      var configCount = Object.keys(configs).length;
-      diagnosticResults.push('✓ 自治体設定OK (' + configCount + '件)');
-    } catch (error) {
-      diagnosticResults.push('✗ 自治体設定エラー: ' + error.toString());
-    }
+    // 品質レポートを生成
+    var qualityReport = generateQualityReport();
     
-    // 3. シート構造チェック
-    var requiredSheets = ['MESSAGE_BOXES', 'OPEN_TICKETS', 'CASE_CATEGORIES', 'LABELS'];
-    requiredSheets.forEach(function(sheetKey) {
-      try {
-        var sheetName = getSheetName(sheetKey);
-        var ss = SpreadsheetApp.getActiveSpreadsheet();
-        var sheet = ss.getSheetByName(sheetName);
-        if (sheet) {
-          diagnosticResults.push('✓ シート存在確認OK: ' + sheetName);
-        } else {
-          diagnosticResults.push('⚠ シート未作成: ' + sheetName);
-        }
-      } catch (error) {
-        diagnosticResults.push('✗ シートチェックエラー: ' + sheetKey);
-      }
-    });
-    
-    // 4. 定数設定チェック
-    try {
-      var batchSize = getConstant('BATCH_SIZE');
-      var waitTime = getConstant('RATE_LIMIT_WAIT');
-      diagnosticResults.push('✓ 定数設定OK (バッチサイズ: ' + batchSize + ', 待機時間: ' + waitTime + 'ms)');
-    } catch (error) {
-      diagnosticResults.push('✗ 定数設定エラー: ' + error.toString());
-    }
-    
-    // 結果表示
+    // 結果をUIに表示
     var ui = SpreadsheetApp.getUi();
-    var message = 'システム診断結果:\\n\\n' + diagnosticResults.join('\\n');
+    var message = '【システム診断結果】\\n\\n' +
+                  '全体状況: ' + getHealthStatusDescription(healthCheck.overall) + '\\n\\n' +
+                  '設定状況: ' + getStatusDescription(healthCheck.components.configuration.status) + '\\n' +
+                  '自治体設定: ' + healthCheck.components.municipalities.total + '件 (有効: ' + 
+                  healthCheck.components.municipalities.valid + '件)\\n\\n';
+    
+    if (healthCheck.recommendations.length > 0) {
+      message += '【推奨事項】\\n';
+      healthCheck.recommendations.forEach(function(rec) {
+        message += '• ' + rec + '\\n';
+      });
+      message += '\\n';
+    }
+    
+    message += '詳細レポートはコンソールログを確認してください。';
+    
     ui.alert('システム診断完了', message, ui.ButtonSet.OK);
     
+    // 詳細レポートをログに出力
+    console.log('=== 設定診断レポート ===');
+    console.log(configReport);
+    console.log('');
+    console.log('=== 品質レポート ===');
+    console.log(qualityReport);
+    
     console.log('=== システム診断完了 ===');
-    console.log('診断結果:');
-    diagnosticResults.forEach(function(result) {
-      console.log(result);
-    });
+    
+    return {
+      healthCheck: healthCheck,
+      configReport: configReport,
+      qualityReport: qualityReport
+    };
     
   } catch (error) {
     handleError(error, 'systemDiagnostics', 
       'システム診断でエラーが発生しました。'
     );
   }
+}
+
+/**
+ * ヘルス状況の説明を取得
+ * @param {string} status ヘルス状況
+ * @return {string} 説明
+ */
+function getHealthStatusDescription(status) {
+  var descriptions = {
+    'healthy': '正常',
+    'warning': '注意',
+    'critical': '要修正',
+    'error': 'エラー',
+    'unknown': '不明'
+  };
+  
+  return descriptions[status] || status;
 }
