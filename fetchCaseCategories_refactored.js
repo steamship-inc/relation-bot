@@ -75,9 +75,7 @@ function fetchCaseCategories() {
       throw error;
     }
   }
-      var caseCategories = JSON.parse(response.getContentText());
-
-        
+  
   // バッチ処理実行
   var processResult = processor.process(municipalities, processMunicipality);
   
@@ -97,82 +95,15 @@ function fetchCaseCategories() {
   
   // 結果表示
   var ui = SpreadsheetApp.getUi();
-  var message = '全自治体チケット分類取得完了
-
-';
-  message += '成功: ' + processResult.successCount + '/' + municipalities.length + '件の自治体
-';
-  message += '取得分類総数: ' + totalCategories + '件
-';
+  var message = '全自治体チケット分類取得完了\\n\\n';
+  message += '成功: ' + processResult.successCount + '/' + municipalities.length + '件の自治体\\n';
+  message += '取得分類総数: ' + totalCategories + '件\\n';
   
   if (processResult.errors.length > 0) {
-    message += 'エラー: ' + processResult.errors.length + '件
-
-';
+    message += 'エラー: ' + processResult.errors.length + '件\\n\\n';
     message += processResult.errors.map(function(err) {
       return err.item.name + ': ' + err.error;
-    }).join('
-');
-  }
-  
-  ui.alert('実行結果', message, ui.ButtonSet.OK);
-}
-      
-      // 50自治体ごとに進捗表示を更新とデータ書き込み
-      if ((i + 1) % 50 === 0 || i === configIds.length - 1) {
-        // 50自治体分のデータを書き込み
-        if (batchData.length > 0) {
-          var dataRange = sheet.getRange(currentRow, 1, batchData.length, 6);
-          dataRange.setValues(batchData);
-          currentRow += batchData.length;
-          
-          console.log('50自治体バッチ書き込み完了: ' + batchData.length + ' 件 (累計: ' + allCategoriesData.length + ' 件)');
-          batchData = []; // バッチデータをリセット
-        }
-      }
-      
-      // エラー以外の個別ログは削除（50自治体ごとにまとめてログ出力）
-      
-    } catch (error) {
-      errorList.push(config.name + ': ' + error.toString());
-      console.error(config.name + ' のチケット分類取得エラー: ' + error.toString());
-      
-      // エラーの場合は必ず進捗表示を更新
-      progressCell.setValue('進捗: ' + (i + 1) + '/' + totalMunicipalities + ' (エラー: ' + config.name + ')');
-      SpreadsheetApp.flush(); // セル更新を即座に反映
-    }
-    
-    // 50自治体ごとにレート制限回避のため待機
-    // re:lation APIは1分間に60回制限なので、50自治体ごとに60秒待機で安全
-    if ((i + 1) % 50 === 0 && i < configIds.length - 1) {
-      console.log('50自治体処理完了 - レート制限回避のため60秒待機...');
-      progressCell.setValue('API制限のため60秒待機');
-      SpreadsheetApp.flush();
-      Utilities.sleep(60000); // 60秒待機
-    }
-  }
-  
-  // 最終確認：残りのデータがあれば書き込み
-  if (batchData.length > 0) {
-    var dataRange = sheet.getRange(currentRow, 1, batchData.length, 6);
-    dataRange.setValues(batchData);
-    console.log('最終バッチ書き込み完了: ' + batchData.length + ' 件');
-  }
-
-  // 最終完了表示
-  progressCell.setValue('完了: ' + successCount + '/' + totalMunicipalities);
-  SpreadsheetApp.flush();
-  
-  console.log('全処理完了: ' + successCount + '/' + totalMunicipalities + ' 自治体');
-  
-  // 結果表示
-  var ui = SpreadsheetApp.getUi();
-  var message = '全自治体チケット分類取得完了\n\n';
-  message += '成功: ' + successCount + '件の自治体\n';
-  message += '取得チケット分類総数: ' + totalCategories + '件\n';
-  if (errorList.length > 0) {
-    message += 'エラー: ' + errorList.length + '件\n\n';
-    message += errorList.join('\n');
+    }).join('\\n');
   }
   
   ui.alert('実行結果', message, ui.ButtonSet.OK);
