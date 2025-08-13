@@ -59,7 +59,6 @@ function fetchCaseCategories() {
       var batchEnd = Math.min(i + 50, configIds.length);
       progressCell.setValue(batchStart + '-' + batchEnd + '/' + totalMunicipalities + ' 処理中');
       SpreadsheetApp.flush();
-      console.log('50自治体バッチ開始: ' + batchStart + '-' + batchEnd + '/' + totalMunicipalities);
     }
     
     try {
@@ -106,7 +105,6 @@ function fetchCaseCategories() {
           dataRange.setValues(batchData);
           currentRow += batchData.length;
           
-          console.log('50自治体バッチ書き込み完了: ' + batchData.length + ' 件 (累計: ' + allCategoriesData.length + ' 件)');
           batchData = []; // バッチデータをリセット
         }
       }
@@ -125,7 +123,6 @@ function fetchCaseCategories() {
     // 50自治体ごとにレート制限回避のため待機
     // re:lation APIは1分間に60回制限なので、50自治体ごとに60秒待機で安全
     if ((i + 1) % 50 === 0 && i < configIds.length - 1) {
-      console.log('50自治体処理完了 - レート制限回避のため60秒待機...');
       progressCell.setValue('API制限のため60秒待機');
       SpreadsheetApp.flush();
       Utilities.sleep(60000); // 60秒待機
@@ -136,14 +133,11 @@ function fetchCaseCategories() {
   if (batchData.length > 0) {
     var dataRange = sheet.getRange(currentRow, 1, batchData.length, 6);
     dataRange.setValues(batchData);
-    console.log('最終バッチ書き込み完了: ' + batchData.length + ' 件');
   }
 
   // 最終完了表示
   progressCell.setValue('完了: ' + successCount + '/' + totalMunicipalities);
   SpreadsheetApp.flush();
-  
-  console.log('全処理完了: ' + successCount + '/' + totalMunicipalities + ' 自治体');
   
   // 結果表示
   var ui = SpreadsheetApp.getUi();

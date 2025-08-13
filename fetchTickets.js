@@ -63,7 +63,6 @@ function fetchOpenTickets() {
       var batchEnd = Math.min(i + 50, configIds.length);
       progressCell.setValue(batchStart + '-' + batchEnd + '/' + totalMunicipalities + ' 処理中');
       SpreadsheetApp.flush();
-      console.log('50自治体バッチ開始: ' + batchStart + '-' + batchEnd + '/' + totalMunicipalities);
     }
     
     try {
@@ -73,33 +72,13 @@ function fetchOpenTickets() {
       var caseCategoriesMap = getCaseCategoriesMap(config.messageBoxId);
       var labelsMap = getLabelsMap(config.messageBoxId);
       
-      console.log('自治体: ' + config.name + ', チケット分類数: ' + Object.keys(caseCategoriesMap).length + ', ラベル数: ' + Object.keys(labelsMap).length);
-      
-      // デバッグ用：最初のチケットの全プロパティを出力（APIレスポンス確認用）
-      if (tickets.length > 0) {
-        console.log('=== API レスポンス サンプル（' + config.name + '）===');
-        console.log('チケット数: ' + tickets.length);
-        console.log('最初のチケットの全プロパティ: ' + JSON.stringify(tickets[0], null, 2));
-        console.log('=====================================');
-      }
-      
       // チケットデータを配列に追加（一括処理用）
       tickets.forEach(function(ticket) {
         var caseCategoryIds = ticket.case_category_ids || [];
         var labelIds = ticket.label_ids || [];
         
-        // デバッグ用ログ：ラベルIDをログ出力
-        if (labelIds.length > 0) {
-          console.log('チケットID: ' + ticket.ticket_id + ', ラベルID: ' + JSON.stringify(labelIds));
-        }
-        
         var categoryNames = getCategoryNames(caseCategoryIds, caseCategoriesMap);
         var labelNames = getLabelNames(labelIds, labelsMap);
-        
-        // デバッグ用ログ：ラベル名の変換結果をログ出力
-        if (labelIds.length > 0) {
-          console.log('ラベルID -> ラベル名変換: ' + JSON.stringify(labelIds) + ' -> ' + JSON.stringify(labelNames));
-        }
         
         var ticketData = [
           config.messageBoxId,        // 受信箱ID
@@ -162,7 +141,6 @@ function fetchOpenTickets() {
           }
           
           currentRow += batchData.length;
-          console.log('50自治体バッチ書き込み完了: ' + batchData.length + ' 件 (累計: ' + allTicketsData.length + ' 件)');
           batchData = []; // バッチデータをリセット
         }
       }
@@ -184,7 +162,6 @@ function fetchOpenTickets() {
     // 50自治体ごとにレート制限回避のため待機
     // re:lation APIは1分間に60回制限なので、50自治体ごとに60秒待機で安全
     if ((i + 1) % 50 === 0 && i < configIds.length - 1) {
-      console.log('50自治体処理完了 - レート制限回避のため60秒待機...');
       progressCell.setValue('API制限のため60秒待機');
       SpreadsheetApp.flush();
       Utilities.sleep(60000); // 60秒待機
@@ -264,24 +241,13 @@ function fetchTicketsForMunicipality(config, ticketType) {
  * @param {boolean} isLast 最後の送信かどうか
  */
 function sendSlackToMunicipality(tickets, config, isLast) {
-  console.log('=== sendSlackToMunicipality デバッグ ===');
-  console.log('自治体名: ' + config.name);
-  console.log('Slackチャンネル: ' + config.slackChannel);
-  console.log('チケット数（フィルタ前）: ' + tickets.length);
-  
   // Slack通知フィルタ条件を適用
   var filteredTickets = applySlackNotificationFilter(tickets, config);
-  
-  console.log('チケット数（フィルタ後）: ' + filteredTickets.length);
-  console.log('フィルタ条件: ' + JSON.stringify(config.slackNotificationFilter));
   
   // フィルタ条件に該当するチケットがある場合のみ通知
   if (filteredTickets.length > 0) {
     sendSlackWithRateLimit(filteredTickets, config, isLast);
-    console.log(config.name + ' へSlack通知送信: ' + filteredTickets.length + '件（フィルタ後）');
   } else {
-    console.log(config.name + ' : Slack通知フィルタ条件に該当するチケットなし');
-    
     // チケットがない場合も最後でなければ待機
     if (!isLast) {
       Utilities.sleep(1500);

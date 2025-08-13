@@ -78,8 +78,6 @@ function loadMunicipalityConfigFromSheet(includeWithoutSlack) {
     };
   }
   
-  console.log('スプレッドシートから ' + Object.keys(configs).length + ' 件の受信箱設定を読み込みました');
-  
   return configs;
 }
 
@@ -157,8 +155,6 @@ function createMunicipalityConfigSheet() {
   headerRange.setBackground('#4285f4');
   headerRange.setFontColor('white');
   headerRange.setFontWeight('bold');
-  
-  console.log('📮受信箱シートを初期化しました');
   
   // 初期設定を返す
   return loadMunicipalityConfigFromSheet();
