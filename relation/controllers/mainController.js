@@ -1,7 +1,6 @@
 /**
- * コントローラー層 - リファクタリング版
- * メニューから呼び出される関数の責務分離版
- * 既存の関数名を保持して下位互換性を確保
+ * コントローラー層
+ * メニューから呼び出される関数の統一エントリポイント
  */
 
 /**
@@ -132,48 +131,6 @@ function fetchMessageBoxes() {
       'エラー詳細: ' + error.toString()
     );
     throw error;
-  }
-}
-
-/**
- * 下位互換性のためのラッパー関数群
- * 既存のメニューシステムとの互換性を保つ
- */
-
-// 既存関数の動作テスト用（段階的移行）
-function testRefactoredFunctions() {
-  try {
-    console.log('=== リファクタリング版関数のテスト開始 ===');
-    
-    var ui = SpreadsheetApp.getUi();
-    var response = ui.alert(
-      'リファクタリング版テスト', 
-      'どの機能をテストしますか？', 
-      ui.ButtonSet.YES_NO_CANCEL
-    );
-    
-    if (response === ui.Button.YES) {
-      // チケット取得テスト
-      console.log('チケット取得テスト開始');
-      fetchOpenTickets();
-      
-    } else if (response === ui.Button.NO) {
-      // マスタデータ取得テスト
-      console.log('マスタデータ取得テスト開始');
-      fetchCaseCategories();
-      
-    } else if (response === ui.Button.CANCEL) {
-      // メッセージボックス取得テスト
-      console.log('メッセージボックス取得テスト開始');
-      fetchMessageBoxes();
-    }
-    
-    console.log('=== リファクタリング版関数のテスト完了 ===');
-    
-  } catch (error) {
-    handleError(error, 'testRefactoredFunctions', 
-      'リファクタリング版のテストでエラーが発生しました。'
-    );
   }
 }
 

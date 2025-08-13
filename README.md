@@ -32,8 +32,7 @@ relation-bot/
 ├── docs/                        # ドキュメント
 ├── config.js                    # 基本設定
 ├── constants.js                 # 定数定義
-├── menu.js                      # Google Apps Scriptメニュー
-└── fetchTickets_legacy.js      # 下位互換性維持
+└── menu.js                      # Google Apps Scriptメニュー
 ```
 
 ## 🏗️ アーキテクチャ
@@ -119,8 +118,8 @@ var summary = executeOpenTicketsFetch({
 
 ## ⚠️ 重要な注意事項
 
-- **`_v2`関数は削除済み**: 全て正式版に統一
-- **レガシーファイル**: `fetchTickets_legacy.js`は下位互換性のみ
+- **完全なクリーンアーキテクチャ**: レガシーコード完全除去済み
+- **新しいディレクトリ構成**: relation/slack で機能完全分離
 - **パス変更**: 新しいディレクトリ構成に合わせてimport/requireを更新
 - **Slack機能**: `slack/`ディレクトリに完全分離
 
