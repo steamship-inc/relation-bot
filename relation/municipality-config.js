@@ -1,6 +1,21 @@
 /**
  * 受信箱設定管理
  * 複数自治体のre:lation連携設定を管理する
+ * 
+ * 関数コールツリー:
+ * loadMunicipalityConfigFromSheet() - スプレッドシートから自治体設定読み込み
+ * ├── parseSlackNotificationFilter() [slack/municipality-slack-config.js] - Slack通知フィルタ解析
+ * 
+ * getMunicipalityDataFromSheet() - 既存の自治体データ取得
+ * └── findColumnIndex() - 列名からインデックス検索
+ * 
+ * 外部ファイルからの依存:
+ * - slack/municipality-slack-config.js: parseSlackNotificationFilter()
+ * 
+ * このファイルが提供する関数:
+ * - loadMunicipalityConfigFromSheet(): 他ファイルから広く使用される設定読み込み関数
+ * - getMunicipalityDataFromSheet(): 自治体データの取得（内部使用）
+ * - findColumnIndex(): 列名検索ユーティリティ（内部使用）
  */
 
 /**
@@ -57,87 +72,6 @@ function loadMunicipalityConfigFromSheet(includeWithoutSlack) {
   console.log('スプレッドシートから ' + Object.keys(configs).length + ' 件の受信箱設定を読み込みました');
   
   return configs;
-}
-
-/**
- * Slack通知フィルタ条件JSON文字列をパース
- * @param {string} jsonString JSON文字列
- * @return {Object} Slack通知フィルタ条件オブジェクト
- */
-function parseSlackNotificationFilter(jsonString) {
-  if (!jsonString) {
-    // デフォルトはフィルタなし（全チケット通知）
-    return null;
-  }
-  
-  try {
-    return JSON.parse(jsonString);
-  } catch (error) {
-    console.error('Slack通知フィルタ条件の解析に失敗しました: ' + error.toString());
-    // エラー時はフィルタなし
-    return null;
-  }
-}
-
-/**
- * 受信箱設定シートを初期化（メニューから呼び出される基本機能）
- * @return {Object} 初期設定オブジェクト
- */
-function createMunicipalityConfigSheet() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var configSheet = ss.insertSheet('📮受信箱');
-  
-  // A1にシートタイトルを設定
-  configSheet.getRange('A1').setValue('📮受信箱');
-  configSheet.getRange('A1').setFontWeight('bold');
-  
-  // ヘッダー行を5行目に設定
-  var headers = [
-    '自治体ID',
-    '自治体名', 
-    '都道府県',
-    '受信箱ID',
-    'Slackチャンネル',
-    'Slack通知テンプレート(JSON)',
-    'Slack通知フィルタ(JSON)'
-  ];
-  configSheet.getRange(5, 1, 1, headers.length).setValues([headers]);
-  
-  // デフォルトSlackテンプレート設定
-  var defaultSlackTemplate = JSON.stringify({
-    headerTemplate: '🏛️ *{municipalityName}*\n\n' +
-                    '🎫 *未対応チケット({totalCount}件)*\n\n',
-    ticketItemTemplate: '• <{ticketUrl}|#{ticketId}> {title}\n  📅 作成: {createdAt}  🔄 更新: {updatedAt}\n  🏷️ 分類: {categoryNames}\n  🔖 ラベル: {labelNames}\n',
-    footerMessage: '\n💡 詳細はスプレッドシートをご確認ください'
-  });
-  
-  // デフォルトSlack通知フィルタ設定（全チケット通知）
-  var defaultSlackFilter = JSON.stringify({});
-  
-  // 既存の自治体データシートから初期データを取得
-  var initialData = getMunicipalityDataFromSheet(defaultSlackTemplate, defaultSlackFilter);
-  
-  configSheet.getRange(6, 1, initialData.length, headers.length).setValues(initialData);
-  
-  // 列幅を調整
-  configSheet.setColumnWidth(1, 100); // 自治体ID
-  configSheet.setColumnWidth(2, 120); // 自治体名
-  configSheet.setColumnWidth(3, 100); // 都道府県
-  configSheet.setColumnWidth(4, 150); // 受信箱ID
-  configSheet.setColumnWidth(5, 150); // Slackチャンネル
-  configSheet.setColumnWidth(6, 500); // Slack通知テンプレートJSON
-  configSheet.setColumnWidth(7, 400); // Slack通知フィルタJSON
-  
-  // ヘッダー行の書式設定
-  var headerRange = configSheet.getRange(5, 1, 1, headers.length);
-  headerRange.setBackground('#4285f4');
-  headerRange.setFontColor('white');
-  headerRange.setFontWeight('bold');
-  
-  console.log('📮受信箱シートを初期化しました');
-  
-  // 初期設定を返す
-  return loadMunicipalityConfigFromSheet();
 }
 
 /**

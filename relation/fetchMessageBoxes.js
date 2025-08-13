@@ -3,9 +3,6 @@ function fetchMessageBoxes() {
   // スクリプトプロパティからAPIキーを取得
   var apiKey = getRelationApiKey();
 
-    // APIキーを取得
-  var apiKey = getRelationApiKey();
-
   // メッセージボックス一覧APIのエンドポイント
   var apiUrl = getRelationEndpoint('message_boxes');
 
@@ -28,16 +25,66 @@ function fetchMessageBoxes() {
   if (!configSheet) {
     // 設定シートがない場合は作成
     console.log('受信箱シートが見つかりません。新規作成します。');
-    createMunicipalityConfigSheet();
-    configSheet = ss.getSheetByName('📮受信箱');
+    
+    // 受信箱設定シートを初期化
+    configSheet = ss.insertSheet('📮受信箱');
+    
+    // A1にシートタイトルを設定
+    configSheet.getRange('A1').setValue('📮受信箱');
+    configSheet.getRange('A1').setFontWeight('bold');
+    
+    // ヘッダー行を5行目に設定
+    var headers = [
+      '自治体ID',
+      '自治体名', 
+      '都道府県',
+      '受信箱ID',
+      'Slackチャンネル',
+      'Slack通知テンプレート(JSON)',
+      'Slack通知フィルタ(JSON)'
+    ];
+    configSheet.getRange(5, 1, 1, headers.length).setValues([headers]);
+    
+    // デフォルトSlackテンプレート設定
+    var defaultSlackTemplate = JSON.stringify({
+      headerTemplate: '🏛️ *{municipalityName}*\n\n' +
+                      '🎫 *未対応チケット({totalCount}件)*\n\n',
+      ticketItemTemplate: '• <{ticketUrl}|#{ticketId}> {title}\n  📅 作成: {createdAt}  🔄 更新: {updatedAt}\n  🏷️ 分類: {categoryNames}\n  🔖 ラベル: {labelNames}\n',
+      footerMessage: '\n💡 詳細はスプレッドシートをご確認ください'
+    });
+    
+    // デフォルトSlack通知フィルタ設定（全チケット通知）
+    var defaultSlackFilter = JSON.stringify({});
+    
+    // 既存の自治体データシートから初期データを取得
+    try {
+      var initialData = getMunicipalityDataFromSheet(defaultSlackTemplate, defaultSlackFilter);
+      configSheet.getRange(6, 1, initialData.length, headers.length).setValues(initialData);
+    } catch (error) {
+      console.log('初期データ取得をスキップ: ' + error.toString());
+    }
+    
+    // 列幅を調整
+    configSheet.setColumnWidth(1, 100); // 自治体ID
+    configSheet.setColumnWidth(2, 120); // 自治体名
+    configSheet.setColumnWidth(3, 100); // 都道府県
+    configSheet.setColumnWidth(4, 150); // 受信箱ID
+    configSheet.setColumnWidth(5, 150); // Slackチャンネル
+    configSheet.setColumnWidth(6, 500); // Slack通知テンプレートJSON
+    configSheet.setColumnWidth(7, 400); // Slack通知フィルタJSON
+    
+    // ヘッダー行の書式設定
+    var headerRange = configSheet.getRange(5, 1, 1, headers.length);
+    headerRange.setBackground('#4285f4');
+    headerRange.setFontColor('white');
+    headerRange.setFontWeight('bold');
+    
+    console.log('📮受信箱シートを初期化しました');
   }
   
   // 対象シートをアクティブにする
   ss.setActiveSheet(configSheet);
 
-  // A1にシートタイトルを設定
-  configSheet.getRange('A1').setValue('📮受信箱');
-  
   // 進捗表示用のセルを準備（C1セルに進捗を表示）
   var progressCell = configSheet.getRange('C1');
   var totalMessageBoxes = messageBoxes.length;
@@ -67,7 +114,7 @@ function fetchMessageBoxes() {
   // 既存データの行数を確認
   var existingRowCount = data.length;
   
-  // コード表からのマッピング用データを事前に読み込み
+  // コード表を一度読み込み（全処理で共有）
   var codeTableMap = loadCodeTableMap();
   
   var processedCount = 0;
@@ -174,7 +221,7 @@ function fetchMessageBoxes() {
 }
 
 /**
- * コード表からマッピング用データを読み込み
+ * コード表を読み込み
  * @return {Array} コード表のデータ配列
  */
 function loadCodeTableMap() {
