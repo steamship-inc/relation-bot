@@ -7,9 +7,6 @@ function fetchLabels() {
     throw new Error('受信箱設定が見つかりません。📮受信箱取得を先に実行してください。');
   }
 
-  // スクリプトプロパティからAPIキーを取得
-  var apiKey = getRelationApiKey();
-
   // シート初期化
   var sheetInfo = initializeSheet(
     CONSTANTS.SHEET_NAMES.LABELS,
@@ -26,47 +23,33 @@ function fetchLabels() {
   });
 
   function fetchLabelsForMunicipality(config, index) {
-    try {
-      // ラベル一覧APIのエンドポイント
-      var apiUrl = buildLabelsUrl(config.messageBoxId);
-      var params = '?per_page=100&page=1';
-
-      // APIリクエスト（GET）
-      var response = UrlFetchApp.fetch(apiUrl + params, {
-        method: 'get',
-        headers: {
-          'Authorization': 'Bearer ' + apiKey,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      var responseData = JSON.parse(response.getContentText());
-      var labels = responseData.data || [];
-      
-      // データをシート形式に変換
-      var labelsData = labels.map(function(label) {
-        return [
-          config.messageBoxId,     // 受信箱ID
-          config.name,            // 自治体名
-          label.label_id,         // ラベルID
-          label.label_name,       // ラベル名
-          label.color || '',      // 色
-          formatDate(label.created_at) // 作成日
-        ];
-      });
-
-      return {
-        success: true,
-        data: labelsData
-      };
-
-    } catch (error) {
-      console.error('ラベル取得エラー - ' + config.name + ': ' + error.toString());
+    var result = fetchLabelsData(config);
+    
+    if (!result.success) {
       return {
         success: false,
-        error: error.toString()
+        error: result.error
       };
     }
+    
+    var labels = result.data;
+    
+    // データをシート形式に変換
+    var labelsData = labels.map(function(label) {
+      return [
+        config.messageBoxId,     // 受信箱ID
+        config.name,            // 自治体名
+        label.label_id,         // ラベルID
+        label.label_name,       // ラベル名
+        label.color || '',      // 色
+        formatDate(label.created_at) // 作成日
+      ];
+    });
+
+    return {
+      success: true,
+      data: labelsData
+    };
   }
 
   var result = processBatch(configList, fetchLabelsForMunicipality, {

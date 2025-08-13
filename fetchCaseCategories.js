@@ -7,9 +7,6 @@ function fetchCaseCategories() {
     throw new Error('受信箱設定が見つかりません。📮受信箱取得を先に実行してください。');
   }
 
-  // スクリプトプロパティからAPIキーを取得
-  var apiKey = getRelationApiKey();
-
   // シート初期化
   var sheetInfo = initializeSheet(
     CONSTANTS.SHEET_NAMES.CASE_CATEGORIES,
@@ -26,47 +23,33 @@ function fetchCaseCategories() {
   });
 
   function fetchCategoriesForMunicipality(config, index) {
-    try {
-      // チケット分類一覧APIのエンドポイント
-      var apiUrl = buildCaseCategoriesUrl(config.messageBoxId);
-      var params = '?per_page=100&page=1';
-
-      // APIリクエスト（GET）
-      var response = UrlFetchApp.fetch(apiUrl + params, {
-        method: 'get',
-        headers: {
-          'Authorization': 'Bearer ' + apiKey,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      var responseData = JSON.parse(response.getContentText());
-      var categories = responseData.data || [];
-      
-      // データをシート形式に変換
-      var categoriesData = categories.map(function(category) {
-        return [
-          config.messageBoxId,                    // 受信箱ID
-          config.name,                           // 自治体名
-          category.case_category_id,             // チケット分類ID
-          category.case_category_name,           // チケット分類名
-          category.parent_case_category_id || '', // 親分類ID
-          category.archived || false             // アーカイブ済み
-        ];
-      });
-
-      return {
-        success: true,
-        data: categoriesData
-      };
-
-    } catch (error) {
-      console.error('チケット分類取得エラー - ' + config.name + ': ' + error.toString());
+    var result = fetchCaseCategoriesData(config);
+    
+    if (!result.success) {
       return {
         success: false,
-        error: error.toString()
+        error: result.error
       };
     }
+    
+    var categories = result.data;
+    
+    // データをシート形式に変換
+    var categoriesData = categories.map(function(category) {
+      return [
+        config.messageBoxId,                    // 受信箱ID
+        config.name,                           // 自治体名
+        category.case_category_id,             // チケット分類ID
+        category.case_category_name,           // チケット分類名
+        category.parent_case_category_id || '', // 親分類ID
+        category.archived || false             // アーカイブ済み
+      ];
+    });
+
+    return {
+      success: true,
+      data: categoriesData
+    };
   }
 
   var result = processBatch(configList, fetchCategoriesForMunicipality, {
