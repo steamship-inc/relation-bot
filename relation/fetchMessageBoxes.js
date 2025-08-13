@@ -342,3 +342,103 @@ function findMunicipalityInCodeTable(municipalityName, codeTableMap) {
   console.log('検索完了: ' + municipalityName + ' -> コード: ' + municipalityCode + ', 都道府県: ' + prefecture);
   return {code: municipalityCode, prefecture: prefecture};
 }
+
+/**
+ * 既存の自治体データシートから初期データを取得
+ * @param {string} defaultSlackTemplate デフォルトSlackテンプレート
+ * @param {string} defaultSlackFilter デフォルトSlackフィルタ
+ * @return {Array} 自治体データの配列
+ */
+function getMunicipalityDataFromSheet(defaultSlackTemplate, defaultSlackFilter) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // 可能性のある自治体データシート名を順に試す
+    var possibleSheetNames = [
+      '自治体マスタ',
+      '自治体一覧', 
+      '自治体データ',
+      'municipalities',
+      'master'
+    ];
+    
+    var sourceSheet = null;
+    for (var i = 0; i < possibleSheetNames.length; i++) {
+      sourceSheet = ss.getSheetByName(possibleSheetNames[i]);
+      if (sourceSheet) {
+        console.log('自治体データシートを発見: ' + possibleSheetNames[i]);
+        break;
+      }
+    }
+    
+    if (!sourceSheet) {
+      throw new Error('自治体データシートが見つかりません。メニュー「📮受信箱取得」を実行して自治体データを取得してください。');
+    }
+    
+    var data = sourceSheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      throw new Error('自治体データシートにデータがありません。メニュー「📮受信箱取得」を実行して自治体データを取得してください。');
+    }
+    
+    var headers = data[0];
+    var municipalityData = [];
+    
+    // ヘッダーから列のインデックスを特定
+    var idIndex = findColumnIndex(headers, ['自治体ID', 'id', 'municipality_id']);
+    var nameIndex = findColumnIndex(headers, ['自治体名', 'name', 'municipality_name']);
+    var prefectureIndex = findColumnIndex(headers, ['都道府県', 'prefecture', '県']);
+    var messageBoxIdIndex = findColumnIndex(headers, ['受信箱ID', 'メッセージボックスID', 'messagebox_id', 'mb_id']);
+    var slackChannelIndex = findColumnIndex(headers, ['Slackチャンネル', 'slack_channel', 'channel']);
+    
+    console.log('列マッピング: ID=' + idIndex + ', 名前=' + nameIndex + ', 県=' + prefectureIndex + ', MB=' + messageBoxIdIndex + ', Slack=' + slackChannelIndex);
+    
+    // データ行を処理
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      
+      // 必須項目がある行のみ処理
+      if (row[idIndex] && row[nameIndex] && row[messageBoxIdIndex]) {
+        var slackChannel = row[slackChannelIndex] || '@U06RYE77HB8'; // デフォルトは個人DM
+        
+        municipalityData.push([
+          row[idIndex],                    // 自治体ID
+          row[nameIndex],                  // 自治体名
+          row[prefectureIndex] || '',      // 都道府県
+          row[messageBoxIdIndex],          // 受信箱ID
+          slackChannel,                    // Slackチャンネル
+          defaultSlackTemplate,            // Slack通知テンプレート
+          defaultSlackFilter               // Slack通知フィルタ
+        ]);
+      }
+    }
+    
+    if (municipalityData.length === 0) {
+      throw new Error('有効な自治体データがありません。自治体データシートの形式を確認するか、メニュー「📮受信箱取得」を実行してください。');
+    }
+    
+    console.log('自治体データシートから ' + municipalityData.length + '件のデータを読み込みました');
+    return municipalityData;
+    
+  } catch (error) {
+    console.error('自治体データシート読み込みエラー: ' + error.toString());
+    throw error; // エラーを再投げして呼び出し元で適切に処理
+  }
+}
+
+/**
+ * 列名からインデックスを検索
+ * @param {Array} headers ヘッダー行
+ * @param {Array} possibleNames 可能な列名の配列
+ * @return {number} 列のインデックス（見つからない場合は-1）
+ */
+function findColumnIndex(headers, possibleNames) {
+  for (var i = 0; i < headers.length; i++) {
+    var header = headers[i].toString().toLowerCase();
+    for (var j = 0; j < possibleNames.length; j++) {
+      if (header.includes(possibleNames[j].toLowerCase())) {
+        return i;
+      }
+    }
+  }
+  return -1;
+}
