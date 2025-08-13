@@ -193,14 +193,12 @@ function getMunicipalityDataFromSheet(defaultSlackTemplate, defaultSlackFilter) 
     }
     
     if (!sourceSheet) {
-      console.log('自治体データシートが見つかりません。デフォルトデータを使用します。');
-      return getDefaultMunicipalityData(defaultSlackTemplate, defaultSlackFilter);
+      throw new Error('自治体データシートが見つかりません。メニュー「📮受信箱取得」を実行して自治体データを取得してください。');
     }
     
     var data = sourceSheet.getDataRange().getValues();
     if (data.length <= 1) {
-      console.log('自治体データシートにデータがありません。デフォルトデータを使用します。');
-      return getDefaultMunicipalityData(defaultSlackTemplate, defaultSlackFilter);
+      throw new Error('自治体データシートにデータがありません。メニュー「📮受信箱取得」を実行して自治体データを取得してください。');
     }
     
     var headers = data[0];
@@ -236,8 +234,7 @@ function getMunicipalityDataFromSheet(defaultSlackTemplate, defaultSlackFilter) 
     }
     
     if (municipalityData.length === 0) {
-      console.log('有効な自治体データがありません。デフォルトデータを使用します。');
-      return getDefaultMunicipalityData(defaultSlackTemplate, defaultSlackFilter);
+      throw new Error('有効な自治体データがありません。自治体データシートの形式を確認するか、メニュー「📮受信箱取得」を実行してください。');
     }
     
     console.log('自治体データシートから ' + municipalityData.length + '件のデータを読み込みました');
@@ -245,7 +242,7 @@ function getMunicipalityDataFromSheet(defaultSlackTemplate, defaultSlackFilter) 
     
   } catch (error) {
     console.error('自治体データシート読み込みエラー: ' + error.toString());
-    return getDefaultMunicipalityData(defaultSlackTemplate, defaultSlackFilter);
+    throw error; // エラーを再投げして呼び出し元で適切に処理
   }
 }
 
@@ -265,26 +262,6 @@ function findColumnIndex(headers, possibleNames) {
     }
   }
   return -1;
-}
-
-/**
- * デフォルトの自治体データを取得
- * @param {string} defaultSlackTemplate デフォルトSlackテンプレート
- * @param {string} defaultSlackFilter デフォルトSlackフィルタ
- * @return {Array} デフォルト自治体データ
- */
-function getDefaultMunicipalityData(defaultSlackTemplate, defaultSlackFilter) {
-  return [
-    [
-      'yamaga',
-      '山鹿市',
-      '熊本県', 
-      '629',
-      '@U06RYE77HB8',  // 個人DM（ユーザーID）
-      defaultSlackTemplate,
-      defaultSlackFilter
-    ]
-  ];
 }
 
 
