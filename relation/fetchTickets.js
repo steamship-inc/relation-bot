@@ -402,16 +402,16 @@ function parseDate(isoString) {
 function getCaseCategoriesMap(messageBoxId) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName('🏷️チケット分類');
+    var sheet = ss.getSheetByName('🗂️チケット分類');
     
     if (!sheet) {
-      console.log('🏷️チケット分類シートが見つかりません');
+      console.log('🗂️チケット分類シートが見つかりません');
       return {};
     }
     
     var data = sheet.getDataRange().getValues();
     if (data.length <= 5) {
-      console.log('🏷️チケット分類シートにデータがありません');
+      console.log('🗂️チケット分類シートにデータがありません');
       return {};
     }
     
