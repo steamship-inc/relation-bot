@@ -158,10 +158,4 @@ function openTicketDetailPage() {
   }
 }
 
-/**
- * ボタンクリック時に呼び出される関数
- * チケット詳細ページを表示
- */
-function showTicketDetailPageFromButton() {
-  openTicketDetailPage();
-}
+

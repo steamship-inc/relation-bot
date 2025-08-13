@@ -40,9 +40,6 @@ function fetchOpenTickets() {
   sheet.getRange(5, 1, 1, 12).setValues([['受信箱ID', '自治体名', 'ID', 'タイトル', 'ステータス', '担当者', '作成日', '更新日', 'チケット分類', 'ラベル', '保留理由ID', '色']]);
   sheet.getRange(5, 1, 1, 12).setFontWeight('bold');
   
-  // チケット詳細ページボタンを作成
-  createTicketDetailPageButton(sheet);
-  
   var successCount = 0;
   var errorList = [];
   var totalTickets = 0;
@@ -568,61 +565,6 @@ function fetchTicketDetail(messageBoxId, ticketId) {
   return ticketDetail;
 }
 
-/**
- * シート上にチケット詳細ページボタンを作成
- * @param {Sheet} sheet 対象シート
- */
-function createTicketDetailPageButton(sheet) {
-  // 既存のボタンを削除（再作成時の重複を防ぐ）
-  var drawings = sheet.getDrawings();
-  for (var i = 0; i < drawings.length; i++) {
-    var drawing = drawings[i];
-    var onAction = drawing.getOnAction();
-    if (onAction === 'showTicketDetailPageFromButton' || onAction === 'showTicketDetailSidebarFromButton') {
-      drawing.remove();
-    }
-  }
-  
-  try {
-    // ボタン用の図形を作成（E1セルの位置に配置）
-    var button = sheet.insertShape(SpreadsheetApp.ShapeType.RECTANGLE, 350, 5, 200, 35);
-    
-    // ボタンのスタイルを設定
-    button.setFill('#34a853');  // Google Greenの背景色
-    button.setBorder('#137333', 2);  // 境界線
-    
-    // ボタンのテキストを設定
-    button.setText('📋 詳細ページで表示');
-    button.setTextStyle(SpreadsheetApp.newTextStyle()
-      .setForegroundColor('#ffffff')
-      .setFontSize(12)
-      .setBold(true)
-      .build());
-    
-    // クリック時に実行する関数を設定
-    button.setOnAction('showTicketDetailPageFromButton');
-    
-    console.log('チケット詳細ページボタンを作成しました');
-    
-  } catch (error) {
-    console.error('ボタン作成エラー: ' + error.toString());
-    // ボタン作成に失敗した場合はログに記録するだけで処理を継続
-  }
-}
 
-/**
- * ボタンクリック時に呼び出される関数
- * チケット詳細ページを表示
- */
-function showTicketDetailPageFromButton() {
-  try {
-    // 詳細ページを表示
-    openTicketDetailPage();
-    
-  } catch (error) {
-    console.error('チケット詳細ページ表示エラー: ' + error.toString());
-    SpreadsheetApp.getUi().alert('エラー', 'チケット詳細ページの表示に失敗しました。\n\n' + error.toString(), SpreadsheetApp.getUi().ButtonSet.OK);
-  }
-}
 
 
