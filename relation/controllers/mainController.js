@@ -6,9 +6,9 @@
 
 /**
  * 全自治体のオープンチケットを取得してシートに統合出力
- * メニューから呼び出される主要機能（リファクタリング版）
+ * メニューから呼び出される主要機能
  */
-function fetchOpenTickets_v2() {
+function fetchOpenTickets() {
   try {
     console.log('=== 全自治体オープンチケット取得開始 ===');
     
@@ -39,7 +39,7 @@ function fetchOpenTickets_v2() {
     return summary;
     
   } catch (error) {
-    handleError(error, 'fetchOpenTickets_v2', 
+    handleError(error, 'fetchOpenTickets', 
       'チケット取得処理でエラーが発生しました。\\n\\n' +
       'エラー詳細: ' + error.toString() + '\\n\\n' +
       '以下を確認してください:\\n' +
@@ -53,9 +53,9 @@ function fetchOpenTickets_v2() {
 
 /**
  * 全自治体のチケット分類一覧を取得・更新
- * メニューから呼び出される機能（リファクタリング版）
+ * メニューから呼び出される機能
  */
-function fetchCaseCategories_v2() {
+function fetchCaseCategories() {
   try {
     console.log('=== 全自治体チケット分類取得開始 ===');
     
@@ -81,9 +81,9 @@ function fetchCaseCategories_v2() {
 
 /**
  * 全自治体のラベル一覧を取得・更新
- * メニューから呼び出される機能（リファクタリング版）
+ * メニューから呼び出される機能
  */
-function fetchLabels_v2() {
+function fetchLabels() {
   try {
     console.log('=== 全自治体ラベル取得開始 ===');
     
@@ -109,9 +109,9 @@ function fetchLabels_v2() {
 
 /**
  * メッセージボックス一覧を取得・更新
- * メニューから呼び出される機能（リファクタリング版）
+ * メニューから呼び出される機能
  */
-function fetchMessageBoxes_v2() {
+function fetchMessageBoxes() {
   try {
     console.log('=== メッセージボックス取得開始 ===');
     
@@ -155,17 +155,17 @@ function testRefactoredFunctions() {
     if (response === ui.Button.YES) {
       // チケット取得テスト
       console.log('チケット取得テスト開始');
-      fetchOpenTickets_v2();
+      fetchOpenTickets();
       
     } else if (response === ui.Button.NO) {
       // マスタデータ取得テスト
       console.log('マスタデータ取得テスト開始');
-      fetchCaseCategories_v2();
+      fetchCaseCategories();
       
     } else if (response === ui.Button.CANCEL) {
       // メッセージボックス取得テスト
       console.log('メッセージボックス取得テスト開始');
-      fetchMessageBoxes_v2();
+      fetchMessageBoxes();
     }
     
     console.log('=== リファクタリング版関数のテスト完了 ===');

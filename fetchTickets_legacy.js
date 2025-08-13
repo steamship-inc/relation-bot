@@ -7,12 +7,12 @@
 /**
  * 既存のメニューシステムとの互換性を保つメイン関数
  * 内部では新しいオーケストレーターを呼び出し
- * @deprecated 新しいコードではfetchOpenTickets_v2()を使用してください
+ * @deprecated 新しいコードではfetchOpenTickets()を使用してください
  */
 function fetchOpenTickets() {
   try {
     console.log('=== fetchOpenTickets (レガシー版) ===');
-    console.log('注意: この関数は廃止予定です。fetchOpenTickets_v2()を使用してください。');
+    console.log('注意: この関数は廃止予定です。relation/controllers/mainController.js のfetchOpenTickets()を使用してください。');
     
     // 新しいオーケストレーターを呼び出し
     var summary = executeOpenTicketsFetch({
@@ -85,17 +85,17 @@ function showMigrationGuide() {
   var message = 'fetchTickets.js 移行ガイド\\n\\n' +
                 '新しいアーキテクチャへの移行が完了しました。\\n\\n' +
                 '【推奨】\\n' +
-                '• fetchOpenTickets_v2() を使用\\n' +
-                '• utils/ticketOrchestrator.js の executeOpenTicketsFetch() を直接呼び出し\\n\\n' +
+                '• relation/controllers/mainController.js の fetchOpenTickets() を使用\\n' +
+                '• relation/utils/ticketOrchestrator.js の executeOpenTicketsFetch() を直接呼び出し\\n\\n' +
                 '【廃止予定】\\n' +
                 '• fetchOpenTickets() (このファイルの関数)\\n' +
                 '• 個別のAPIヘルパー関数\\n\\n' +
                 '【新しいファイル構成】\\n' +
-                '• utils/apiHelpers.js - API関連\\n' +
-                '• utils/dataProcessors.js - データ処理\\n' +
-                '• utils/slackHelpers.js - Slack通知\\n' +
-                '• utils/ticketOrchestrator.js - メイン処理\\n' +
-                '• controllers/mainController.js - 統一されたエントリポイント';
+                '• relation/utils/apiHelpers.js - API関連\\n' +
+                '• relation/utils/dataProcessors.js - データ処理\\n' +
+                '• slack/slackHelpers.js - Slack通知\\n' +
+                '• relation/utils/ticketOrchestrator.js - メイン処理\\n' +
+                '• relation/controllers/mainController.js - 統一されたエントリポイント';
   
   ui.alert('移行ガイド', message, ui.ButtonSet.OK);
 }
