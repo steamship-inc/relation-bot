@@ -4,7 +4,7 @@
  */
 
 /**
- * 指定受信箱のチケット一覧を取得
+ * 指定受信箱のチケット一覧を取得（タイトルはシートから取得）
  * @param {string} messageBoxId 受信箱ID
  * @return {Array} チケット一覧
  */
@@ -45,11 +45,14 @@ function fetchTicketList(messageBoxId) {
     
     console.log('🎫 チケット一覧取得成功: ' + tickets.length + '件');
     
-    // 必要な情報のみを返す（軽量化）
+    // 必要な情報のみを返す（軽量化）、タイトルはシートから取得
     return tickets.map(function(ticket) {
+      var sheetTitle = getTicketTitleFromSheet(ticket.ticket_id);
+      var title = sheetTitle || ticket.title; // シートにタイトルがない場合はAPIのタイトルを使用
+      
       return {
         ticket_id: ticket.ticket_id,
-        title: ticket.title,
+        title: title,
         status_cd: ticket.status_cd,
         created_at: ticket.created_at,
         last_updated_at: ticket.last_updated_at
@@ -59,6 +62,77 @@ function fetchTicketList(messageBoxId) {
   } catch (error) {
     console.error('❌ チケット一覧取得失敗: ' + error.message);
     throw new Error('チケット一覧の取得に失敗しました: ' + error.message);
+  }
+}
+
+/**
+ * 🎫未対応チケットシートからチケットタイトルを取得
+ * @param {string} ticketId チケットID
+ * @return {string} チケットタイトル（見つからない場合は空文字）
+ */
+function getTicketTitleFromSheet(ticketId) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('🎫未対応チケット');
+    
+    if (!sheet) {
+      console.log('🎫未対応チケットシートが見つかりません');
+      return '';
+    }
+    
+    var data = sheet.getDataRange().getValues();
+    
+    if (data.length <= 5) { // ヘッダー行（5行目）を除く
+      console.log('🎫未対応チケットシートにデータがありません');
+      return '';
+    }
+    
+    // データ行をループしてチケットIDが一致する行を探す（6行目以降、0ベースで5以降）
+    for (var i = 5; i < data.length; i++) {
+      var row = data[i];
+      
+      // C列（チケットID）が一致するかチェック
+      if (row[2] && row[2].toString() === ticketId.toString()) {
+        var title = row[3] || ''; // D列: タイトル
+        console.log('🎫 シートからタイトル取得: ' + ticketId + ' -> ' + title);
+        return title;
+      }
+    }
+    
+    console.log('🎫 シートにチケットIDが見つかりません: ' + ticketId);
+    return '';
+    
+  } catch (error) {
+    console.error('❌ シートからタイトル取得失敗: ' + error.message);
+    return '';
+  }
+}
+
+/**
+ * チケット詳細をAPIから取得（タイトルはシートから取得）
+ * @param {string} messageBoxId 受信箱ID
+ * @param {string} ticketId チケットID
+ * @return {Object} チケット詳細オブジェクト
+ */
+function fetchTicketDetailWithSheetTitle(messageBoxId, ticketId) {
+  try {
+    // APIからチケット詳細を取得
+    var ticketDetail = fetchTicketDetail(messageBoxId, ticketId);
+    
+    // シートからタイトルを取得して上書き
+    var sheetTitle = getTicketTitleFromSheet(ticketId);
+    if (sheetTitle) {
+      ticketDetail.title = sheetTitle;
+      console.log('🎫 タイトルをシートから上書き: ' + sheetTitle);
+    } else {
+      console.log('🎫 シートにタイトルなし、APIタイトルを使用: ' + ticketDetail.title);
+    }
+    
+    return ticketDetail;
+    
+  } catch (error) {
+    console.error('❌ チケット詳細取得失敗: ' + error.message);
+    throw error;
   }
 }
 

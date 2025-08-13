@@ -551,7 +551,7 @@
         .withFailureHandler(function(error) {
           showError('チケット詳細の取得に失敗しました: ' + error.toString());
         })
-        .fetchTicketDetail(municipality.messageBoxId, ticketId);
+        .fetchTicketDetailWithSheetTitle(municipality.messageBoxId, ticketId);
     }
 
     function displayTicketDetail(ticketDetail, municipality) {
