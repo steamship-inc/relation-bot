@@ -9,22 +9,13 @@
  * @return {Object} 受信箱設定オブジェクト
  */
 function getMunicipalityConfig(messageBoxId) {
-  var configs = getAllMunicipalityConfigs();
+  var configs = loadMunicipalityConfigFromSheet();
   
   if (!configs[messageBoxId]) {
     throw new Error('受信箱設定が見つかりません: ' + messageBoxId);
   }
   
   return configs[messageBoxId];
-}
-
-/**
- * 全自治体の設定を取得（スプレッドシートから読み込み）
- * @return {Object} 全受信箱設定オブジェクト（受信箱IDをキーとする）
- */
-function getAllMunicipalityConfigs() {
-  // スプレッドシートから設定を読み込み
-  return loadMunicipalityConfigFromSheet();
 }
 
 /**
