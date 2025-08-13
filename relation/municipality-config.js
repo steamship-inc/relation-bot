@@ -4,21 +4,6 @@
  */
 
 /**
- * 指定された受信箱IDの設定を取得
- * @param {string} messageBoxId 受信箱ID
- * @return {Object} 受信箱設定オブジェクト
- */
-function getMunicipalityConfig(messageBoxId) {
-  var configs = loadMunicipalityConfigFromSheet();
-  
-  if (!configs[messageBoxId]) {
-    throw new Error('受信箱設定が見つかりません: ' + messageBoxId);
-  }
-  
-  return configs[messageBoxId];
-}
-
-/**
  * スプレッドシートから自治体設定を読み込み
  * @param {boolean} includeWithoutSlack Slackチャンネル未設定の自治体も含めるかどうか（デフォルト: false）
  * @return {Object} 受信箱設定オブジェクト（受信箱IDをキーとする）
