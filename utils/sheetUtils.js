@@ -54,5 +54,9 @@ function updateProgress(progressCell, current, total, message) {
   }
   progressCell.setValue(progressText);
   progressCell.setFontWeight('bold');
-  SpreadsheetApp.flush();
+  
+  // 進捗更新時のみflushを実行
+  if (message === 'API制限のため60秒待機' || current === total) {
+    SpreadsheetApp.flush();
+  }
 }
