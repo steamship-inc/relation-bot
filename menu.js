@@ -11,7 +11,7 @@ function onOpen() {
     .addItem('🎫 未対応チケット取得', 'fetchOpenTickets')
     .addItem('📋 サイドバーで詳細表示', 'showTicketDetailSidebar')
     .addSeparator()
-    .addItem('🔔slack手動送信', 'manualSendSlack')
+    .addItem('🔔slack手動送信', 'slack_manualSendSlack')
     .addToUi();
 
   ui.createMenu('🏛 設定')
