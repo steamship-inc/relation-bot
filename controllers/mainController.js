@@ -12,19 +12,34 @@ function fetchOpenTickets_v2() {
   try {
     console.log('=== 全自治体オープンチケット取得開始 ===');
     
-    var result = TicketService.fetchAllOpenTickets();
+    // オーケストレーターを使用して完全なワークフローを実行
+    var summary = executeOpenTicketsFetch({
+      enableNotifications: true,
+      enableProgressDisplay: true
+    });
     
     console.log('=== 全自治体オープンチケット取得完了 ===');
-    console.log('処理結果: 成功 ' + result.successCount + '/' + result.totalCount + ' 自治体');
-    console.log('取得チケット総数: ' + result.dataCount + ' 件');
+    console.log('処理結果: 成功 ' + summary.successfulMunicipalities + '/' + summary.totalMunicipalities + ' 自治体');
+    console.log('取得チケット総数: ' + summary.totalTickets + ' 件');
+    console.log('処理時間: ' + summary.duration);
     
     // 結果通知
-    NotificationService.showCompletionAlert('全自治体チケット取得完了', result);
+    var ui = SpreadsheetApp.getUi();
+    var message = '処理完了\\n\\n' +
+                  '自治体数: ' + summary.totalMunicipalities + '\\n' +
+                  'チケット数: ' + summary.totalTickets + '\\n' +
+                  '処理時間: ' + summary.duration;
     
-    return result;
+    if (summary.errors.length > 0) {
+      message += '\\n\\nエラー: ' + summary.errors.length + '件';
+    }
+    
+    ui.alert('チケット取得完了', message, ui.ButtonSet.OK);
+    
+    return summary;
     
   } catch (error) {
-    handleError(error, 'fetchOpenTickets', 
+    handleError(error, 'fetchOpenTickets_v2', 
       'チケット取得処理でエラーが発生しました。\\n\\n' +
       'エラー詳細: ' + error.toString() + '\\n\\n' +
       '以下を確認してください:\\n' +
