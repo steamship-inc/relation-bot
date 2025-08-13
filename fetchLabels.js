@@ -10,62 +10,25 @@ function fetchLabels() {
   // スクリプトプロパティからAPIキーを取得
   var apiKey = getRelationApiKey();
 
-  // 出力先シート（🏷️ラベル）を取得・新規作成・クリア
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName('🏷️ラベル');
+  // シート初期化
+  var sheetInfo = initializeSheet(
+    CONSTANTS.SHEET_NAMES.LABELS,
+    '🏷️ラベル',
+    ['受信箱ID', '自治体名', 'ラベルID', 'ラベル名', '色', '作成日']
+  );
 
-  // シートがなければ新規作成、既存シートあればデータクリア
-  if (!sheet) {
-    sheet = ss.insertSheet('🏷️ラベル');
-  } else {
-    sheet.clear();
-  }
-  
-  // 対象シートをアクティブにする
-  ss.setActiveSheet(sheet);
+  // 初期進捗表示
+  updateProgress(sheetInfo.progressCell, 0, Object.keys(configs).length);
 
-  // A1にシートタイトルを設定
-  sheet.getRange('A1').setValue('🏷️ラベル');
-  sheet.getRange('A1').setFontWeight('bold');
+  // バッチ処理で各自治体のラベルを取得
+  var configList = Object.keys(configs).map(function(municipalityId) {
+    return configs[municipalityId];
+  });
 
-  // 進捗表示用のセルを準備（C1セルに進捗を表示）
-  var progressCell = sheet.getRange('C1');
-  var totalMunicipalities = Object.keys(configs).length;
-  progressCell.setValue('進捗: 0/' + totalMunicipalities);
-  progressCell.setFontWeight('bold');
-  SpreadsheetApp.flush(); // セル更新を即座に反映
-
-  // ヘッダー行を5行目に追加
-  sheet.getRange(5, 1, 1, 6).setValues([['受信箱ID', '自治体名', 'ラベルID', 'ラベル名', '色', '作成日']]);
-  sheet.getRange(5, 1, 1, 6).setFontWeight('bold');
-  
-  var totalLabels = 0;
-  var successCount = 0;
-  var errorList = [];
-  var allLabelsData = []; // 全データを格納する配列
-  var batchData = []; // 50自治体分のデータを一時保存
-  var currentRow = 6; // データ開始行（ヘッダーの下）
-  
-  // 各自治体のラベルを順次取得・統合
-  var configIds = Object.keys(configs);
-  
-  for (var i = 0; i < configIds.length; i++) {
-    var municipalityId = configIds[i];
-    var config = configs[municipalityId];
-    
-    // 50自治体ごとのバッチ開始時に進捗表示
-    if (i % 50 === 0) {
-      var batchStart = i + 1;
-      var batchEnd = Math.min(i + 50, configIds.length);
-      progressCell.setValue(batchStart + '-' + batchEnd + '/' + totalMunicipalities + ' 処理中');
-      SpreadsheetApp.flush();
-    }
-    
+  function fetchLabelsForMunicipality(config, index) {
     try {
       // ラベル一覧APIのエンドポイント
       var apiUrl = buildLabelsUrl(config.messageBoxId);
-
-      // クエリパラメータ（1ページ最大100件）
       var params = '?per_page=100&page=1';
 
       // APIリクエスト（GET）
@@ -77,77 +40,60 @@ function fetchLabels() {
         }
       });
 
-      // レスポンス（JSON配列）をパース
-      var labels = JSON.parse(response.getContentText());
-
-      // ラベルデータを配列に追加（一括処理用）
-      labels.forEach(function(label) {
-        var labelData = [
-          config.messageBoxId,            // 受信箱ID
-          config.name,                    // 自治体名
-          label.label_id || label.id,     // ラベルID（APIレスポンスによって異なる可能性）
-          label.name,                     // ラベル名
-          label.color || '',              // 色（nullの場合は空文字）
-          label.created_at || ''          // 作成日（nullの場合は空文字）
+      var responseData = JSON.parse(response.getContentText());
+      var labels = responseData.data || [];
+      
+      // データをシート形式に変換
+      var labelsData = labels.map(function(label) {
+        return [
+          config.messageBoxId,     // 受信箱ID
+          config.name,            // 自治体名
+          label.label_id,         // ラベルID
+          label.label_name,       // ラベル名
+          label.color || '',      // 色
+          formatDate(label.created_at) // 作成日
         ];
-        allLabelsData.push(labelData);
-        batchData.push(labelData);
       });
-      
-      totalLabels += labels.length;
-      successCount++;
-      
-      // 50自治体ごとに進捗表示を更新とデータ書き込み
-      if ((i + 1) % 50 === 0 || i === configIds.length - 1) {
-        // 50自治体分のデータを書き込み
-        if (batchData.length > 0) {
-          var dataRange = sheet.getRange(currentRow, 1, batchData.length, 6);
-          dataRange.setValues(batchData);
-          currentRow += batchData.length;
-          
-          batchData = []; // バッチデータをリセット
-        }
-      }
-      
-      // エラー以外の個別ログは削除（50自治体ごとにまとめてログ出力）
-      
+
+      return {
+        success: true,
+        data: labelsData
+      };
+
     } catch (error) {
-      errorList.push(config.name + ': ' + error.toString());
-      console.error(config.name + ' のラベル取得エラー: ' + error.toString());
-      
-      // エラーの場合は必ず進捗表示を更新
-      progressCell.setValue('進捗: ' + (i + 1) + '/' + totalMunicipalities + ' (エラー: ' + config.name + ')');
-      SpreadsheetApp.flush(); // セル更新を即座に反映
+      console.error('ラベル取得エラー - ' + config.name + ': ' + error.toString());
+      return {
+        success: false,
+        error: error.toString()
+      };
     }
-    
-    // 50自治体ごとにレート制限回避のため待機
-    // re:lation APIは1分間に60回制限なので、50自治体ごとに60秒待機で安全
-    if ((i + 1) % 50 === 0 && i < configIds.length - 1) {
-      progressCell.setValue('API制限のため60秒待機');
-      SpreadsheetApp.flush();
-      Utilities.sleep(60000); // 60秒待機
-    }
-  }
-  
-  // 最終確認：残りのデータがあれば書き込み
-  if (batchData.length > 0) {
-    var dataRange = sheet.getRange(currentRow, 1, batchData.length, 6);
-    dataRange.setValues(batchData);
   }
 
-  // 最終完了表示
-  progressCell.setValue('完了: ' + successCount + '/' + totalMunicipalities);
-  SpreadsheetApp.flush();
-  
+  var result = processBatch(configList, fetchLabelsForMunicipality, {
+    batchSize: CONSTANTS.BATCH_SIZE,
+    waitTime: CONSTANTS.RATE_LIMIT_WAIT,
+    progressCell: sheetInfo.progressCell,
+    sheet: sheetInfo.sheet,
+    startRow: sheetInfo.currentRow,
+    columnCount: 6
+  });
+
   // 結果表示
   var ui = SpreadsheetApp.getUi();
   var message = '全自治体ラベル取得完了\n\n';
-  message += '成功: ' + successCount + '件の自治体\n';
-  message += '取得ラベル総数: ' + totalLabels + '件\n';
-  if (errorList.length > 0) {
-    message += 'エラー: ' + errorList.length + '件\n\n';
-    message += errorList.join('\n');
+  message += '成功: ' + result.successCount + '件の自治体\n';
+  message += '取得ラベル総数: ' + result.allData.length + '件\n';
+  
+  if (result.errorList.length > 0) {
+    message += 'エラー: ' + result.errorList.length + '件\n\n';
+    message += 'エラー詳細:\n';
+    for (var i = 0; i < Math.min(result.errorList.length, 5); i++) {
+      message += '- ' + result.errorList[i].item.name + ': ' + result.errorList[i].error + '\n';
+    }
+    if (result.errorList.length > 5) {
+      message += '他' + (result.errorList.length - 5) + '件\n';
+    }
   }
   
-  ui.alert('実行結果', message, ui.ButtonSet.OK);
+  ui.alert('ラベル取得完了', message, ui.ButtonSet.OK);
 }
