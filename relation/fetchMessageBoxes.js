@@ -3,8 +3,11 @@ function fetchMessageBoxes() {
   // スクリプトプロパティからAPIキーを取得
   var apiKey = getRelationApiKey();
 
+    // APIキーを取得
+  var apiKey = getRelationApiKey();
+
   // メッセージボックス一覧APIのエンドポイント
-  var apiUrl = buildMessageBoxesUrl();
+  var apiUrl = getRelationEndpoint('message_boxes');
 
   // APIリクエスト（GET）
   var response = UrlFetchApp.fetch(apiUrl, {
@@ -115,7 +118,11 @@ function fetchMessageBoxes() {
     configSheet.getRange(rowIndex, 4).setValue(messageBox.message_box_id);
     
     // メッセージボックスURLを生成して自治体名列（B列）にリンクを設定
-    var messageBoxUrl = getRelationBaseUrl() + '/tickets/#/' + messageBox.message_box_id + '/tickets/open/p1';
+    var messageBoxUrl = getRelationEndpoint('ticket_web_url', {
+      messageBoxId: messageBox.message_box_id,
+      ticketId: '',
+      status: 'open'
+    }).replace('/p1/', '/p1'); // チケットIDなしの場合は一覧ページ
     var richText = SpreadsheetApp.newRichTextValue()
       .setText(municipalityName)
       .setLinkUrl(messageBoxUrl)

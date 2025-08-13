@@ -64,7 +64,7 @@ function fetchLabels() {
     
     try {
       // ラベル一覧APIのエンドポイント
-      var apiUrl = buildLabelsUrl(config.messageBoxId);
+      var apiUrl = getRelationEndpoint('labels', { messageBoxId: config.messageBoxId });
 
       // クエリパラメータ（1ページ最大100件）
       var params = '?per_page=100&page=1';

@@ -67,7 +67,27 @@ function fetchOpenTickets() {
     }
     
     try {
-      var tickets = fetchTicketsForMunicipality(config, 'openTickets');
+      // APIキーを取得
+      var apiKey = getRelationApiKey();
+      
+      // チケット検索APIを呼び出し
+      var apiUrl = getRelationEndpoint('tickets_search', { messageBoxId: config.messageBoxId });
+      var payload = {
+        status_cds: DEFAULT_SEARCH_CONDITIONS.status_cds,
+        per_page: DEFAULT_SEARCH_CONDITIONS.per_page,
+        page: DEFAULT_SEARCH_CONDITIONS.page
+      };
+      
+      var response = UrlFetchApp.fetch(apiUrl, {
+        method: 'post',
+        headers: {
+          'Authorization': 'Bearer ' + apiKey,
+          'Content-Type': 'application/json'
+        },
+        payload: JSON.stringify(payload)
+      });
+      
+      var tickets = JSON.parse(response.getContentText());
       
       // チケット分類とラベルの名前を取得
       var caseCategoriesMap = getCaseCategoriesMap(config.messageBoxId);
@@ -151,7 +171,11 @@ function fetchOpenTickets() {
             
             if (ticketConfig) {
               // D列（タイトル）にre:lationへのリンクを設定
-              var ticketUrl = buildTicketUrl(ticketConfig.messageBoxId, ticketId, 'open');
+              var ticketUrl = getRelationEndpoint('ticket_web_url', {
+                messageBoxId: ticketConfig.messageBoxId,
+                ticketId: ticketId,
+                status: 'open'
+              });
               var richTextTitle = SpreadsheetApp.newRichTextValue()
                 .setText(title)
                 .setLinkUrl(ticketUrl)
@@ -215,46 +239,6 @@ function fetchOpenTickets() {
   }
   
   ui.alert('実行結果', message, ui.ButtonSet.OK);
-}
-
-/**
- * 指定自治体のチケットを取得する共通関数
- * @param {Object} config 自治体設定
- * @param {string} ticketType 'openTickets'
- * @return {Array} チケット配列
- */
-function fetchTicketsForMunicipality(config, ticketType) {
-  // スクリプトプロパティからAPIキーを取得
-  var apiKey = getRelationApiKey();
-
-  // チケット検索APIのエンドポイント
-  var apiUrl = buildTicketSearchUrl(config.messageBoxId);
-
-  // 共通検索条件を取得（全自治体統一）
-  var searchConditions = getCommonSearchConditions();
-  var payload = {
-    status_cds: searchConditions.status_cds,
-    per_page: searchConditions.per_page,
-    page: searchConditions.page
-  };
-
-  // 必要に応じて将来的に追加検索条件を設定可能
-  // if (searchConditions.label_ids && searchConditions.label_ids.length > 0) {
-  //   payload.label_ids = searchConditions.label_ids;
-  // }
-
-  // APIリクエスト（POST）
-  var response = UrlFetchApp.fetch(apiUrl, {
-    method: 'post',
-    headers: {
-      'Authorization': 'Bearer ' + apiKey,
-      'Content-Type': 'application/json'
-    },
-    payload: JSON.stringify(payload)
-  });
-
-  // レスポンス（JSON配列）をパース
-  return JSON.parse(response.getContentText());
 }
 
 /**
@@ -562,7 +546,10 @@ function fetchTicketDetail(messageBoxId, ticketId) {
   var apiKey = getRelationApiKey();
   
   // チケット詳細APIのエンドポイント
-  var apiUrl = buildTicketDetailUrl(messageBoxId, ticketId);
+  var apiUrl = getRelationEndpoint('ticket_detail', { 
+    messageBoxId: messageBoxId, 
+    ticketId: ticketId 
+  });
   
   console.log('チケット詳細API呼び出し: ' + apiUrl);
   
