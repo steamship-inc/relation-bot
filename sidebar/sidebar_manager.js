@@ -13,7 +13,7 @@ var lastSelectedSheet = null;
 function showTicketDetailSidebar() {
   try {
     // HTMLファイルからサイドバーを作成
-    var htmlOutput = HtmlService.createHtmlOutputFromFile('ticket_detail_sidebar')
+    var htmlOutput = HtmlService.createHtmlOutputFromFile('sidebar/ticket_detail_sidebar')
       .setTitle('🎫 チケット詳細')
       .setWidth(900);
     
