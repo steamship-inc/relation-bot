@@ -40,8 +40,8 @@ function fetchOpenTickets() {
   sheet.getRange(5, 1, 1, 12).setValues([['受信箱ID', '自治体名', 'ID', 'タイトル', 'ステータス', '担当者', '作成日', '更新日', 'チケット分類', 'ラベル', '保留理由ID', '色']]);
   sheet.getRange(5, 1, 1, 12).setFontWeight('bold');
   
-  // チケット詳細サイドバーボタンを作成
-  createTicketDetailButton(sheet);
+  // チケット詳細ページボタンを作成
+  createTicketDetailPageButton(sheet);
   
   var successCount = 0;
   var errorList = [];
@@ -551,7 +551,6 @@ function fetchTicketDetail(messageBoxId, ticketId) {
     ticketId: ticketId 
   });
   
-  console.log('チケット詳細API呼び出し: ' + apiUrl);
   
   // APIリクエスト（GET）
   var response = UrlFetchApp.fetch(apiUrl, {
@@ -564,22 +563,22 @@ function fetchTicketDetail(messageBoxId, ticketId) {
   
   // レスポンスをパース
   var ticketDetail = JSON.parse(response.getContentText());
-  
-  console.log('チケット詳細取得成功: ' + JSON.stringify(ticketDetail, null, 2));
+  console.log('チケット詳細取得成功: ' + ticketId);
   
   return ticketDetail;
 }
 
 /**
- * シート上にチケット詳細サイドバーボタンを作成
+ * シート上にチケット詳細ページボタンを作成
  * @param {Sheet} sheet 対象シート
  */
-function createTicketDetailButton(sheet) {
+function createTicketDetailPageButton(sheet) {
   // 既存のボタンを削除（再作成時の重複を防ぐ）
   var drawings = sheet.getDrawings();
   for (var i = 0; i < drawings.length; i++) {
     var drawing = drawings[i];
-    if (drawing.getOnAction() === 'showTicketDetailSidebarFromButton') {
+    var onAction = drawing.getOnAction();
+    if (onAction === 'showTicketDetailPageFromButton' || onAction === 'showTicketDetailSidebarFromButton') {
       drawing.remove();
     }
   }
@@ -593,7 +592,7 @@ function createTicketDetailButton(sheet) {
     button.setBorder('#137333', 2);  // 境界線
     
     // ボタンのテキストを設定
-    button.setText('📋 サイドバーで詳細表示');
+    button.setText('📋 詳細ページで表示');
     button.setTextStyle(SpreadsheetApp.newTextStyle()
       .setForegroundColor('#ffffff')
       .setFontSize(12)
@@ -601,9 +600,9 @@ function createTicketDetailButton(sheet) {
       .build());
     
     // クリック時に実行する関数を設定
-    button.setOnAction('showTicketDetailSidebarFromButton');
+    button.setOnAction('showTicketDetailPageFromButton');
     
-    console.log('チケット詳細サイドバーボタンを作成しました');
+    console.log('チケット詳細ページボタンを作成しました');
     
   } catch (error) {
     console.error('ボタン作成エラー: ' + error.toString());
@@ -613,28 +612,16 @@ function createTicketDetailButton(sheet) {
 
 /**
  * ボタンクリック時に呼び出される関数
- * チケット詳細サイドバーを表示
+ * チケット詳細ページを表示
  */
-function showTicketDetailSidebarFromButton() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getActiveSheet();
-  
-  // 🎫未対応チケットシートかチェック
-  if (sheet.getName() !== '🎫未対応チケット') {
-    SpreadsheetApp.getUi().alert('エラー', '🎫未対応チケットシートで実行してください。', SpreadsheetApp.getUi().ButtonSet.OK);
-    return;
-  }
-  
+function showTicketDetailPageFromButton() {
   try {
-    // サイドバーを表示
-    showTicketDetailSidebar();
-    
-    // 使い方のヒントを表示
-    SpreadsheetApp.getUi().alert('サイドバー表示', 'チケット詳細サイドバーを表示しました。\n\n💡 使い方:\n1. チケット一覧から見たい行をクリック\n2. サイドバーに詳細が自動表示されます\n3. 別の行を選択すると詳細が切り替わります', SpreadsheetApp.getUi().ButtonSet.OK);
+    // 詳細ページを表示
+    openTicketDetailPage();
     
   } catch (error) {
-    console.error('サイドバー表示エラー: ' + error.toString());
-    SpreadsheetApp.getUi().alert('エラー', 'サイドバーの表示に失敗しました。\n\n' + error.toString(), SpreadsheetApp.getUi().ButtonSet.OK);
+    console.error('チケット詳細ページ表示エラー: ' + error.toString());
+    SpreadsheetApp.getUi().alert('エラー', 'チケット詳細ページの表示に失敗しました。\n\n' + error.toString(), SpreadsheetApp.getUi().ButtonSet.OK);
   }
 }
 
