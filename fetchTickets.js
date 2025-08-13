@@ -37,8 +37,11 @@ function fetchOpenTickets() {
   SpreadsheetApp.flush(); // セル更新を即座に反映
 
   // ヘッダー行を5行目に追加
-  sheet.getRange(5, 1, 1, 10).setValues([['受信箱ID', '自治体名', 'ID', 'タイトル', 'ステータス', '作成日', '更新日', 'チケット分類', 'ラベル', '保留理由ID']]);
-  sheet.getRange(5, 1, 1, 10).setFontWeight('bold');
+  sheet.getRange(5, 1, 1, 12).setValues([['受信箱ID', '自治体名', 'ID', 'タイトル', 'ステータス', '担当者', '作成日', '更新日', 'チケット分類', 'ラベル', '保留理由ID', '色']]);
+  sheet.getRange(5, 1, 1, 12).setFontWeight('bold');
+  
+  // チケット詳細サイドバーボタンを作成
+  createTicketDetailButton(sheet);
   
   var successCount = 0;
   var errorList = [];
@@ -72,6 +75,14 @@ function fetchOpenTickets() {
       
       console.log('自治体: ' + config.name + ', チケット分類数: ' + Object.keys(caseCategoriesMap).length + ', ラベル数: ' + Object.keys(labelsMap).length);
       
+      // デバッグ用：最初のチケットの全プロパティを出力（APIレスポンス確認用）
+      if (tickets.length > 0) {
+        console.log('=== API レスポンス サンプル（' + config.name + '）===');
+        console.log('チケット数: ' + tickets.length);
+        console.log('最初のチケットの全プロパティ: ' + JSON.stringify(tickets[0], null, 2));
+        console.log('=====================================');
+      }
+      
       // チケットデータを配列に追加（一括処理用）
       tickets.forEach(function(ticket) {
         var caseCategoryIds = ticket.case_category_ids || [];
@@ -96,11 +107,13 @@ function fetchOpenTickets() {
           ticket.ticket_id,           // チケットID
           ticket.title,               // タイトル
           ticket.status_cd,           // ステータス
+          ticket.assignee || '',      // 担当者のメンション名
           parseDate(ticket.created_at),          // 作成日（Dateオブジェクト）
           parseDate(ticket.last_updated_at),     // 更新日（Dateオブジェクト）
           categoryNames.join(', '),   // チケット分類名
           labelNames.join(', '),      // ラベル名
-          ticket.pending_reason_id || ''         // 保留理由ID
+          ticket.pending_reason_id || '',        // 保留理由ID
+          ticket.color_cd || ''       // 色
         ];
         allTicketsData.push(ticketData);
         batchData.push(ticketData);
@@ -113,14 +126,14 @@ function fetchOpenTickets() {
       if ((i + 1) % 50 === 0 || i === configIds.length - 1) {
         // 50自治体分のデータを書き込み
         if (batchData.length > 0) {
-          var dataRange = sheet.getRange(currentRow, 1, batchData.length, 10);
+          var dataRange = sheet.getRange(currentRow, 1, batchData.length, 12);
           dataRange.setValues(batchData);
           
-          // 日付列（F列：作成日、G列：更新日）のフォーマットを設定
-          var dateFormatRange = sheet.getRange(currentRow, 6, batchData.length, 2); // F列とG列
+          // 日付列（G列：作成日、H列：更新日）のフォーマットを設定
+          var dateFormatRange = sheet.getRange(currentRow, 7, batchData.length, 2); // G列とH列
           dateFormatRange.setNumberFormat('yyyy/mm/dd hh:mm');
           
-          // チケットURLとリンク設定（バッチ処理）
+          // チケットIDとタイトルにリンクを設定
           for (var j = 0; j < batchData.length; j++) {
             var ticketRowData = batchData[j];
             var ticketId = ticketRowData[2]; // チケットID
@@ -137,13 +150,14 @@ function fetchOpenTickets() {
             }
             
             if (ticketConfig) {
+              // D列（タイトル）にre:lationへのリンクを設定
               var ticketUrl = buildTicketUrl(ticketConfig.messageBoxId, ticketId, 'open');
-              var richText = SpreadsheetApp.newRichTextValue()
+              var richTextTitle = SpreadsheetApp.newRichTextValue()
                 .setText(title)
                 .setLinkUrl(ticketUrl)
                 .build();
               
-              sheet.getRange(currentRow + j, 4).setRichTextValue(richText);
+              sheet.getRange(currentRow + j, 4).setRichTextValue(richTextTitle);
             }
           }
           
@@ -179,7 +193,7 @@ function fetchOpenTickets() {
   
   // 最終確認：残りのデータがあれば書き込み
   if (batchData.length > 0) {
-    var dataRange = sheet.getRange(currentRow, 1, batchData.length, 10);
+    var dataRange = sheet.getRange(currentRow, 1, batchData.length, 12);
     dataRange.setValues(batchData);
     console.log('最終バッチ書き込み完了: ' + batchData.length + ' 件');
   }
@@ -533,6 +547,108 @@ function getLabelNames(labelIds, labelsMap) {
     
     return labelName || 'ID:' + labelId; // 名前が見つからない場合はIDを表示
   });
+}
+
+
+
+/**
+ * チケット詳細をAPIから取得
+ * @param {string} messageBoxId 受信箱ID
+ * @param {string} ticketId チケットID
+ * @return {Object} チケット詳細オブジェクト
+ */
+function fetchTicketDetail(messageBoxId, ticketId) {
+  // APIキーを取得
+  var apiKey = getRelationApiKey();
+  
+  // チケット詳細APIのエンドポイント
+  var apiUrl = buildTicketDetailUrl(messageBoxId, ticketId);
+  
+  console.log('チケット詳細API呼び出し: ' + apiUrl);
+  
+  // APIリクエスト（GET）
+  var response = UrlFetchApp.fetch(apiUrl, {
+    method: 'get',
+    headers: {
+      'Authorization': 'Bearer ' + apiKey,
+      'Content-Type': 'application/json'
+    }
+  });
+  
+  // レスポンスをパース
+  var ticketDetail = JSON.parse(response.getContentText());
+  
+  console.log('チケット詳細取得成功: ' + JSON.stringify(ticketDetail, null, 2));
+  
+  return ticketDetail;
+}
+
+/**
+ * シート上にチケット詳細サイドバーボタンを作成
+ * @param {Sheet} sheet 対象シート
+ */
+function createTicketDetailButton(sheet) {
+  // 既存のボタンを削除（再作成時の重複を防ぐ）
+  var drawings = sheet.getDrawings();
+  for (var i = 0; i < drawings.length; i++) {
+    var drawing = drawings[i];
+    if (drawing.getOnAction() === 'showTicketDetailSidebarFromButton') {
+      drawing.remove();
+    }
+  }
+  
+  try {
+    // ボタン用の図形を作成（E1セルの位置に配置）
+    var button = sheet.insertShape(SpreadsheetApp.ShapeType.RECTANGLE, 350, 5, 200, 35);
+    
+    // ボタンのスタイルを設定
+    button.setFill('#34a853');  // Google Greenの背景色
+    button.setBorder('#137333', 2);  // 境界線
+    
+    // ボタンのテキストを設定
+    button.setText('📋 サイドバーで詳細表示');
+    button.setTextStyle(SpreadsheetApp.newTextStyle()
+      .setForegroundColor('#ffffff')
+      .setFontSize(12)
+      .setBold(true)
+      .build());
+    
+    // クリック時に実行する関数を設定
+    button.setOnAction('showTicketDetailSidebarFromButton');
+    
+    console.log('チケット詳細サイドバーボタンを作成しました');
+    
+  } catch (error) {
+    console.error('ボタン作成エラー: ' + error.toString());
+    // ボタン作成に失敗した場合はログに記録するだけで処理を継続
+  }
+}
+
+/**
+ * ボタンクリック時に呼び出される関数
+ * チケット詳細サイドバーを表示
+ */
+function showTicketDetailSidebarFromButton() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getActiveSheet();
+  
+  // 🎫未対応チケットシートかチェック
+  if (sheet.getName() !== '🎫未対応チケット') {
+    SpreadsheetApp.getUi().alert('エラー', '🎫未対応チケットシートで実行してください。', SpreadsheetApp.getUi().ButtonSet.OK);
+    return;
+  }
+  
+  try {
+    // サイドバーを表示
+    showTicketDetailSidebar();
+    
+    // 使い方のヒントを表示
+    SpreadsheetApp.getUi().alert('サイドバー表示', 'チケット詳細サイドバーを表示しました。\n\n💡 使い方:\n1. チケット一覧から見たい行をクリック\n2. サイドバーに詳細が自動表示されます\n3. 別の行を選択すると詳細が切り替わります', SpreadsheetApp.getUi().ButtonSet.OK);
+    
+  } catch (error) {
+    console.error('サイドバー表示エラー: ' + error.toString());
+    SpreadsheetApp.getUi().alert('エラー', 'サイドバーの表示に失敗しました。\n\n' + error.toString(), SpreadsheetApp.getUi().ButtonSet.OK);
+  }
 }
 
 
