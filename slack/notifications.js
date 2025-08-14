@@ -32,7 +32,7 @@ function manualSendSlack() {
     }
 
     // 全自治体設定を取得
-    var configs = getAllMunicipalityConfigs();
+    var configs = loadMunicipalityConfigFromSheet();
     
     if (Object.keys(configs).length === 0) {
       ui.alert('エラー', '受信箱設定が見つかりません。設定シートを確認してください。', ui.ButtonSet.OK);
@@ -58,7 +58,7 @@ function processSelectedMunicipality(municipalityCode) {
     console.log('自治体選択処理開始: ' + municipalityCode);
     
     // 全自治体設定を取得
-    var configs = getAllMunicipalityConfigs();
+    var configs = loadMunicipalityConfigFromSheet();
     var selectedConfig = configs[municipalityCode];
     
     if (!selectedConfig) {

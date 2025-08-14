@@ -40,9 +40,6 @@ function fetchOpenTickets() {
   sheet.getRange(5, 1, 1, 12).setValues([['受信箱ID', '自治体名', 'ID', 'タイトル', 'ステータス', '担当者', '作成日', '更新日', 'チケット分類', 'ラベル', '保留理由ID', '色']]);
   sheet.getRange(5, 1, 1, 12).setFontWeight('bold');
   
-  // チケット詳細サイドバーボタンを作成
-  createTicketDetailButton(sheet);
-  
   var successCount = 0;
   var errorList = [];
   var totalTickets = 0;
@@ -67,7 +64,27 @@ function fetchOpenTickets() {
     }
     
     try {
-      var tickets = fetchTicketsForMunicipality(config, 'openTickets');
+      // APIキーを取得
+      var apiKey = getRelationApiKey();
+      
+      // チケット検索APIを呼び出し
+      var apiUrl = getRelationEndpoint('tickets_search', { messageBoxId: config.messageBoxId });
+      var payload = {
+        status_cds: DEFAULT_SEARCH_CONDITIONS.status_cds,
+        per_page: DEFAULT_SEARCH_CONDITIONS.per_page,
+        page: DEFAULT_SEARCH_CONDITIONS.page
+      };
+      
+      var response = UrlFetchApp.fetch(apiUrl, {
+        method: 'post',
+        headers: {
+          'Authorization': 'Bearer ' + apiKey,
+          'Content-Type': 'application/json'
+        },
+        payload: JSON.stringify(payload)
+      });
+      
+      var tickets = JSON.parse(response.getContentText());
       
       // チケット分類とラベルの名前を取得
       var caseCategoriesMap = getCaseCategoriesMap(config.messageBoxId);
@@ -151,7 +168,11 @@ function fetchOpenTickets() {
             
             if (ticketConfig) {
               // D列（タイトル）にre:lationへのリンクを設定
-              var ticketUrl = buildTicketUrl(ticketConfig.messageBoxId, ticketId, 'open');
+              var ticketUrl = getRelationEndpoint('ticket_web_url', {
+                messageBoxId: ticketConfig.messageBoxId,
+                ticketId: ticketId,
+                status: 'open'
+              });
               var richTextTitle = SpreadsheetApp.newRichTextValue()
                 .setText(title)
                 .setLinkUrl(ticketUrl)
@@ -215,46 +236,6 @@ function fetchOpenTickets() {
   }
   
   ui.alert('実行結果', message, ui.ButtonSet.OK);
-}
-
-/**
- * 指定自治体のチケットを取得する共通関数
- * @param {Object} config 自治体設定
- * @param {string} ticketType 'openTickets'
- * @return {Array} チケット配列
- */
-function fetchTicketsForMunicipality(config, ticketType) {
-  // スクリプトプロパティからAPIキーを取得
-  var apiKey = getRelationApiKey();
-
-  // チケット検索APIのエンドポイント
-  var apiUrl = buildTicketSearchUrl(config.messageBoxId);
-
-  // 共通検索条件を取得（全自治体統一）
-  var searchConditions = getCommonSearchConditions();
-  var payload = {
-    status_cds: searchConditions.status_cds,
-    per_page: searchConditions.per_page,
-    page: searchConditions.page
-  };
-
-  // 必要に応じて将来的に追加検索条件を設定可能
-  // if (searchConditions.label_ids && searchConditions.label_ids.length > 0) {
-  //   payload.label_ids = searchConditions.label_ids;
-  // }
-
-  // APIリクエスト（POST）
-  var response = UrlFetchApp.fetch(apiUrl, {
-    method: 'post',
-    headers: {
-      'Authorization': 'Bearer ' + apiKey,
-      'Content-Type': 'application/json'
-    },
-    payload: JSON.stringify(payload)
-  });
-
-  // レスポンス（JSON配列）をパース
-  return JSON.parse(response.getContentText());
 }
 
 /**
@@ -562,9 +543,11 @@ function fetchTicketDetail(messageBoxId, ticketId) {
   var apiKey = getRelationApiKey();
   
   // チケット詳細APIのエンドポイント
-  var apiUrl = buildTicketDetailUrl(messageBoxId, ticketId);
+  var apiUrl = getRelationEndpoint('ticket_detail', { 
+    messageBoxId: messageBoxId, 
+    ticketId: ticketId 
+  });
   
-  console.log('チケット詳細API呼び出し: ' + apiUrl);
   
   // APIリクエスト（GET）
   var response = UrlFetchApp.fetch(apiUrl, {
@@ -577,78 +560,11 @@ function fetchTicketDetail(messageBoxId, ticketId) {
   
   // レスポンスをパース
   var ticketDetail = JSON.parse(response.getContentText());
-  
-  console.log('チケット詳細取得成功: ' + JSON.stringify(ticketDetail, null, 2));
+  console.log('チケット詳細取得成功: ' + ticketId);
   
   return ticketDetail;
 }
 
-/**
- * シート上にチケット詳細サイドバーボタンを作成
- * @param {Sheet} sheet 対象シート
- */
-function createTicketDetailButton(sheet) {
-  // 既存のボタンを削除（再作成時の重複を防ぐ）
-  var drawings = sheet.getDrawings();
-  for (var i = 0; i < drawings.length; i++) {
-    var drawing = drawings[i];
-    if (drawing.getOnAction() === 'showTicketDetailSidebarFromButton') {
-      drawing.remove();
-    }
-  }
-  
-  try {
-    // ボタン用の図形を作成（E1セルの位置に配置）
-    var button = sheet.insertShape(SpreadsheetApp.ShapeType.RECTANGLE, 350, 5, 200, 35);
-    
-    // ボタンのスタイルを設定
-    button.setFill('#34a853');  // Google Greenの背景色
-    button.setBorder('#137333', 2);  // 境界線
-    
-    // ボタンのテキストを設定
-    button.setText('📋 サイドバーで詳細表示');
-    button.setTextStyle(SpreadsheetApp.newTextStyle()
-      .setForegroundColor('#ffffff')
-      .setFontSize(12)
-      .setBold(true)
-      .build());
-    
-    // クリック時に実行する関数を設定
-    button.setOnAction('showTicketDetailSidebarFromButton');
-    
-    console.log('チケット詳細サイドバーボタンを作成しました');
-    
-  } catch (error) {
-    console.error('ボタン作成エラー: ' + error.toString());
-    // ボタン作成に失敗した場合はログに記録するだけで処理を継続
-  }
-}
 
-/**
- * ボタンクリック時に呼び出される関数
- * チケット詳細サイドバーを表示
- */
-function showTicketDetailSidebarFromButton() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getActiveSheet();
-  
-  // 🎫未対応チケットシートかチェック
-  if (sheet.getName() !== '🎫未対応チケット') {
-    SpreadsheetApp.getUi().alert('エラー', '🎫未対応チケットシートで実行してください。', SpreadsheetApp.getUi().ButtonSet.OK);
-    return;
-  }
-  
-  try {
-    // サイドバーを表示
-    showTicketDetailSidebar();
-    
-    // 使い方のヒントを表示
-    SpreadsheetApp.getUi().alert('サイドバー表示', 'チケット詳細サイドバーを表示しました。\n\n💡 使い方:\n1. チケット一覧から見たい行をクリック\n2. サイドバーに詳細が自動表示されます\n3. 別の行を選択すると詳細が切り替わります', SpreadsheetApp.getUi().ButtonSet.OK);
-    
-  } catch (error) {
-    console.error('サイドバー表示エラー: ' + error.toString());
-    SpreadsheetApp.getUi().alert('エラー', 'サイドバーの表示に失敗しました。\n\n' + error.toString(), SpreadsheetApp.getUi().ButtonSet.OK);
-  }
-}
 
 

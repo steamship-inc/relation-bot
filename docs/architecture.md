@@ -24,8 +24,6 @@ config.js
 ```
 municipality_config.js
 ├── 設定取得
-│   ├── getMunicipalityConfig(municipalityId) - 個別自治体設定取得
-│   ├── getAllMunicipalityConfigs() - 全自治体設定取得
 │   └── loadMunicipalityConfigFromSheet() - シートから設定読み込み
 ├── JSON解析
 │   └── parseSlackNotificationFilter(jsonString) - Slackフィルタ条件解析

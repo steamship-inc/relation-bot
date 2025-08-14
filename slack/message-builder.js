@@ -22,7 +22,11 @@ function createSlackMessage(tickets, config) {
   
   for (var i = 0; i < totalCount; i++) {
     var ticket = tickets[i];
-    var ticketUrl = buildTicketUrl(messageBoxId, ticket.ticket_id, 'open');
+    var ticketUrl = getRelationEndpoint('ticket_web_url', {
+      messageBoxId: messageBoxId,
+      ticketId: ticket.ticket_id,
+      status: 'open'
+    });
     
     // チケット分類とラベルの表示
     var categoryNames = (ticket.case_category_names && ticket.case_category_names.length > 0) 

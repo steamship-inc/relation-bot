@@ -4,7 +4,7 @@ function fetchMessageBoxes() {
   var apiKey = getRelationApiKey();
 
   // メッセージボックス一覧APIのエンドポイント
-  var apiUrl = buildMessageBoxesUrl();
+  var apiUrl = getRelationEndpoint('message_boxes');
 
   // APIリクエスト（GET）
   var response = UrlFetchApp.fetch(apiUrl, {
@@ -25,16 +25,66 @@ function fetchMessageBoxes() {
   if (!configSheet) {
     // 設定シートがない場合は作成
     console.log('受信箱シートが見つかりません。新規作成します。');
-    createMunicipalityConfigSheet();
-    configSheet = ss.getSheetByName('📮受信箱');
+    
+    // 受信箱設定シートを初期化
+    configSheet = ss.insertSheet('📮受信箱');
+    
+    // A1にシートタイトルを設定
+    configSheet.getRange('A1').setValue('📮受信箱');
+    configSheet.getRange('A1').setFontWeight('bold');
+    
+    // ヘッダー行を5行目に設定
+    var headers = [
+      '自治体ID',
+      '自治体名', 
+      '都道府県',
+      '受信箱ID',
+      'Slackチャンネル',
+      'Slack通知テンプレート(JSON)',
+      'Slack通知フィルタ(JSON)'
+    ];
+    configSheet.getRange(5, 1, 1, headers.length).setValues([headers]);
+    
+    // デフォルトSlackテンプレート設定
+    var defaultSlackTemplate = JSON.stringify({
+      headerTemplate: '🏛️ *{municipalityName}*\n\n' +
+                      '🎫 *未対応チケット({totalCount}件)*\n\n',
+      ticketItemTemplate: '• <{ticketUrl}|#{ticketId}> {title}\n  📅 作成: {createdAt}  🔄 更新: {updatedAt}\n  🏷️ 分類: {categoryNames}\n  🔖 ラベル: {labelNames}\n',
+      footerMessage: '\n💡 詳細はスプレッドシートをご確認ください'
+    });
+    
+    // デフォルトSlack通知フィルタ設定（全チケット通知）
+    var defaultSlackFilter = JSON.stringify({});
+    
+    // 既存の自治体データシートから初期データを取得
+    try {
+      var initialData = getMunicipalityDataFromSheet(defaultSlackTemplate, defaultSlackFilter);
+      configSheet.getRange(6, 1, initialData.length, headers.length).setValues(initialData);
+    } catch (error) {
+      console.log('初期データ取得をスキップ: ' + error.toString());
+    }
+    
+    // 列幅を調整
+    configSheet.setColumnWidth(1, 100); // 自治体ID
+    configSheet.setColumnWidth(2, 120); // 自治体名
+    configSheet.setColumnWidth(3, 100); // 都道府県
+    configSheet.setColumnWidth(4, 150); // 受信箱ID
+    configSheet.setColumnWidth(5, 150); // Slackチャンネル
+    configSheet.setColumnWidth(6, 500); // Slack通知テンプレートJSON
+    configSheet.setColumnWidth(7, 400); // Slack通知フィルタJSON
+    
+    // ヘッダー行の書式設定
+    var headerRange = configSheet.getRange(5, 1, 1, headers.length);
+    headerRange.setBackground('#4285f4');
+    headerRange.setFontColor('white');
+    headerRange.setFontWeight('bold');
+    
+    console.log('📮受信箱シートを初期化しました');
   }
   
   // 対象シートをアクティブにする
   ss.setActiveSheet(configSheet);
 
-  // A1にシートタイトルを設定
-  configSheet.getRange('A1').setValue('📮受信箱');
-  
   // 進捗表示用のセルを準備（C1セルに進捗を表示）
   var progressCell = configSheet.getRange('C1');
   var totalMessageBoxes = messageBoxes.length;
@@ -64,7 +114,7 @@ function fetchMessageBoxes() {
   // 既存データの行数を確認
   var existingRowCount = data.length;
   
-  // コード表からのマッピング用データを事前に読み込み
+  // コード表を一度読み込み（全処理で共有）
   var codeTableMap = loadCodeTableMap();
   
   var processedCount = 0;
@@ -115,7 +165,11 @@ function fetchMessageBoxes() {
     configSheet.getRange(rowIndex, 4).setValue(messageBox.message_box_id);
     
     // メッセージボックスURLを生成して自治体名列（B列）にリンクを設定
-    var messageBoxUrl = getRelationBaseUrl() + '/tickets/#/' + messageBox.message_box_id + '/tickets/open/p1';
+    var messageBoxUrl = getRelationEndpoint('ticket_web_url', {
+      messageBoxId: messageBox.message_box_id,
+      ticketId: '',
+      status: 'open'
+    }).replace('/p1/', '/p1'); // チケットIDなしの場合は一覧ページ
     var richText = SpreadsheetApp.newRichTextValue()
       .setText(municipalityName)
       .setLinkUrl(messageBoxUrl)
@@ -167,7 +221,7 @@ function fetchMessageBoxes() {
 }
 
 /**
- * コード表からマッピング用データを読み込み
+ * コード表を読み込み
  * @return {Array} コード表のデータ配列
  */
 function loadCodeTableMap() {
@@ -287,4 +341,104 @@ function findMunicipalityInCodeTable(municipalityName, codeTableMap) {
   
   console.log('検索完了: ' + municipalityName + ' -> コード: ' + municipalityCode + ', 都道府県: ' + prefecture);
   return {code: municipalityCode, prefecture: prefecture};
+}
+
+/**
+ * 既存の自治体データシートから初期データを取得
+ * @param {string} defaultSlackTemplate デフォルトSlackテンプレート
+ * @param {string} defaultSlackFilter デフォルトSlackフィルタ
+ * @return {Array} 自治体データの配列
+ */
+function getMunicipalityDataFromSheet(defaultSlackTemplate, defaultSlackFilter) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // 可能性のある自治体データシート名を順に試す
+    var possibleSheetNames = [
+      '自治体マスタ',
+      '自治体一覧', 
+      '自治体データ',
+      'municipalities',
+      'master'
+    ];
+    
+    var sourceSheet = null;
+    for (var i = 0; i < possibleSheetNames.length; i++) {
+      sourceSheet = ss.getSheetByName(possibleSheetNames[i]);
+      if (sourceSheet) {
+        console.log('自治体データシートを発見: ' + possibleSheetNames[i]);
+        break;
+      }
+    }
+    
+    if (!sourceSheet) {
+      throw new Error('自治体データシートが見つかりません。メニュー「📮受信箱取得」を実行して自治体データを取得してください。');
+    }
+    
+    var data = sourceSheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      throw new Error('自治体データシートにデータがありません。メニュー「📮受信箱取得」を実行して自治体データを取得してください。');
+    }
+    
+    var headers = data[0];
+    var municipalityData = [];
+    
+    // ヘッダーから列のインデックスを特定
+    var idIndex = findColumnIndex(headers, ['自治体ID', 'id', 'municipality_id']);
+    var nameIndex = findColumnIndex(headers, ['自治体名', 'name', 'municipality_name']);
+    var prefectureIndex = findColumnIndex(headers, ['都道府県', 'prefecture', '県']);
+    var messageBoxIdIndex = findColumnIndex(headers, ['受信箱ID', 'メッセージボックスID', 'messagebox_id', 'mb_id']);
+    var slackChannelIndex = findColumnIndex(headers, ['Slackチャンネル', 'slack_channel', 'channel']);
+    
+    console.log('列マッピング: ID=' + idIndex + ', 名前=' + nameIndex + ', 県=' + prefectureIndex + ', MB=' + messageBoxIdIndex + ', Slack=' + slackChannelIndex);
+    
+    // データ行を処理
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      
+      // 必須項目がある行のみ処理
+      if (row[idIndex] && row[nameIndex] && row[messageBoxIdIndex]) {
+        var slackChannel = row[slackChannelIndex] || '@U06RYE77HB8'; // デフォルトは個人DM
+        
+        municipalityData.push([
+          row[idIndex],                    // 自治体ID
+          row[nameIndex],                  // 自治体名
+          row[prefectureIndex] || '',      // 都道府県
+          row[messageBoxIdIndex],          // 受信箱ID
+          slackChannel,                    // Slackチャンネル
+          defaultSlackTemplate,            // Slack通知テンプレート
+          defaultSlackFilter               // Slack通知フィルタ
+        ]);
+      }
+    }
+    
+    if (municipalityData.length === 0) {
+      throw new Error('有効な自治体データがありません。自治体データシートの形式を確認するか、メニュー「📮受信箱取得」を実行してください。');
+    }
+    
+    console.log('自治体データシートから ' + municipalityData.length + '件のデータを読み込みました');
+    return municipalityData;
+    
+  } catch (error) {
+    console.error('自治体データシート読み込みエラー: ' + error.toString());
+    throw error; // エラーを再投げして呼び出し元で適切に処理
+  }
+}
+
+/**
+ * 列名からインデックスを検索
+ * @param {Array} headers ヘッダー行
+ * @param {Array} possibleNames 可能な列名の配列
+ * @return {number} 列のインデックス（見つからない場合は-1）
+ */
+function findColumnIndex(headers, possibleNames) {
+  for (var i = 0; i < headers.length; i++) {
+    var header = headers[i].toString().toLowerCase();
+    for (var j = 0; j < possibleNames.length; j++) {
+      if (header.includes(possibleNames[j].toLowerCase())) {
+        return i;
+      }
+    }
+  }
+  return -1;
 }

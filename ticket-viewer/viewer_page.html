@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>チケット詳細 - re:lation連携</title>
+  <!-- CSS読み込み: 強制出力スクリプトレットタグでviewer_page_css.htmlを埋め込み -->
+  <?!= HtmlService.createHtmlOutputFromFile('ticket-viewer/viewer_page_css').getContent(); ?>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎫 チケット詳細表示</h1>
+      <p>チケットIDを指定してメッセージ履歴を確認</p>
+    </div>
+
+    <div class="content">
+      <div class="ticket-selector">
+        <h3>📋 チケット選択</h3>
+        <div class="input-group">
+          <label for="municipalitySelect">自治体:</label>
+          <select id="municipalitySelect" onchange="loadTicketList()">
+            <option value="">自治体を選択...</option>
+          </select>
+          
+          <label for="ticketSelect">チケット:</label>
+          <select id="ticketSelect" disabled>
+            <option value="">まず自治体を選択してください</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="ticketContent">
+        <div class="empty-state">
+          <div class="icon">💬</div>
+          <div>上記でチケットを選択してください</div>
+          <div style="margin-top: 8px; font-size: 14px; color: #999;">
+            自治体を選択するとチケット一覧が表示されます
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript読み込み: 強制出力スクリプトレットタグでviewer_page_js.htmlを埋め込み -->
+  <?!= HtmlService.createHtmlOutputFromFile('ticket-viewer/viewer_page_js').getContent(); ?>
+</body>
+</html>

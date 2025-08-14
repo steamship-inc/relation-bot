@@ -64,7 +64,7 @@ function fetchCaseCategories() {
     
     try {
       // チケット分類一覧APIのエンドポイント
-      var apiUrl = buildCaseCategoriesUrl(config.messageBoxId);
+      var apiUrl = getRelationEndpoint('case_categories', { messageBoxId: config.messageBoxId });
 
       // クエリパラメータ（1ページ最大100件）
       var params = '?per_page=100&page=1';
