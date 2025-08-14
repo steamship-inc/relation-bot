@@ -51,6 +51,19 @@
     return div.innerHTML;
   }
 
+  function sanitizeHtml(text) {
+    if (!text) return '';
+    
+    // HTMLタグを除去し、HTMLエンティティをデコードしてからエスケープ
+    var tempDiv = document.createElement('div');
+    tempDiv.innerHTML = text;
+    var plainText = tempDiv.textContent || tempDiv.innerText || '';
+    
+    // プレーンテキストをエスケープして、改行のみ<br>タグに変換
+    var escaped = escapeHtml(plainText);
+    return escaped.replace(/\n/g, '<br>');
+  }
+
   function formatDate(dateString) {
     if (!dateString) return '';
     try {
@@ -93,10 +106,14 @@
     // チケット一覧を取得
     google.script.run
       .withSuccessHandler(function(tickets) {
+        console.log('🔍 フロント: 受信したチケットデータ:', tickets);
+        console.log('🔍 フロント: チケット数:', tickets ? tickets.length : 'null/undefined');
         currentTickets = tickets || [];
+        console.log('🔍 フロント: currentTickets設定完了:', currentTickets.length + '件');
         populateTicketSelect();
       })
       .withFailureHandler(function(error) {
+        console.error('❌ フロント: チケット一覧取得エラー:', error);
         ticketSelect.innerHTML = '<option value="">❌ 読み込み失敗</option>';
         showError('チケット一覧の取得に失敗しました: ' + error.toString());
       })
@@ -106,7 +123,10 @@
   function populateTicketSelect() {
     var ticketSelect = document.getElementById('ticketSelect');
     
+    console.log('🔍 フロント: populateTicketSelect開始, currentTickets.length=', currentTickets.length);
+    
     if (currentTickets.length === 0) {
+      console.log('🔍 フロント: チケットなし');
       ticketSelect.innerHTML = '<option value="">📭 チケットがありません</option>';
       ticketSelect.disabled = true;
       return;
@@ -114,7 +134,8 @@
     
     // チケット選択肢を作成
     var optionsHtml = '<option value="">チケットを選択...</option>';
-    currentTickets.forEach(function(ticket) {
+    currentTickets.forEach(function(ticket, index) {
+      console.log('🔍 フロント: チケット' + index + ':', ticket);
       var title = ticket.title || 'タイトルなし';
       // タイトルが長い場合は省略
       if (title.length > 50) {
@@ -122,6 +143,8 @@
       }
       optionsHtml += `<option value="${ticket.ticket_id}">[${ticket.ticket_id}] ${escapeHtml(title)}</option>`;
     });
+    
+    console.log('🔍 フロント: 生成したoptionsHtml:', optionsHtml);
     
     ticketSelect.innerHTML = optionsHtml;
     ticketSelect.disabled = false;
@@ -238,7 +261,7 @@
               <div class="message-from"><strong>差出人:</strong> ${escapeHtml(message.from || '')}</div>
               <div class="message-to"><strong>宛先:</strong> ${escapeHtml(message.to || '')}</div>
             </div>
-            <div class="message-body">${escapeHtml(message.body || '内容なし')}</div>
+            <div class="message-body">${sanitizeHtml(message.body || '内容なし')}</div>
             ${attachmentsHtml}
           </div>
         `;
