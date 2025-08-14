@@ -8,43 +8,279 @@
  * 📮受信箱シートのG列に設定するJSON文字列を生成
  */
 function showFilterConfigDialog() {
-  var ui = SpreadsheetApp.getUi();
-  
-  // 自治体選択のプロンプト（簡易版）
-  var messageBoxId = ui.prompt(
-    '受信箱ID入力',
-    '設定する自治体の受信箱IDを入力してください：',
-    ui.ButtonSet.OK_CANCEL
-  );
-  
-  if (messageBoxId.getSelectedButton() === ui.Button.CANCEL) return;
-  
-  // 受信箱IDを文字列として取得し、前後のスペースを除去
-  var targetMessageBoxId = String(messageBoxId.getResponseText()).trim();
-  console.log('入力された受信箱ID: "' + targetMessageBoxId + '" (type: ' + typeof targetMessageBoxId + ')');
-  
-  // 設定確認
+  // 全自治体の設定を取得
   var configs = loadMunicipalityConfigFromSheet(true);
   
-  // デバッグ：利用可能な受信箱IDを表示
-  var availableIds = Object.keys(configs);
-  console.log('利用可能な受信箱ID: ' + availableIds.join(', '));
-  
-  if (!configs[targetMessageBoxId]) {
-    // 類似IDの提案
-    var suggestion = '';
-    if (availableIds.length > 0) {
-      suggestion = '\n\n利用可能な受信箱ID:\n' + availableIds.map(function(id) {
-        return '• ' + id + ' (' + configs[id].name + ')';
-      }).join('\n');
-    }
-    
-    ui.alert('エラー', '指定された受信箱IDが見つかりません: "' + targetMessageBoxId + '"' + suggestion, ui.ButtonSet.OK);
+  if (Object.keys(configs).length === 0) {
+    SpreadsheetApp.getUi().alert('エラー', '自治体設定が見つかりません。先に「📮 受信箱取得」を実行してください。', SpreadsheetApp.getUi().ButtonSet.OK);
     return;
   }
   
+  // 自治体選択用HTMLダイアログを表示
+  showMunicipalitySelectionDialog(configs);
+}
+
+/**
+ * 自治体選択用HTMLダイアログを表示
+ * @param {Object} configs 全自治体設定
+ */
+function showMunicipalitySelectionDialog(configs) {
+  var htmlTemplate = HtmlService.createTemplate(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <base target="_top">
+        <style>
+          body { 
+            font-family: Arial, sans-serif; 
+            margin: 30px;
+            background-color: #f8f9fa;
+          }
+          .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          }
+          h2 { 
+            color: #333; 
+            text-align: center;
+            margin-bottom: 30px;
+          }
+          .search-container {
+            position: relative;
+            margin-bottom: 20px;
+          }
+          #municipalitySearch {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            box-sizing: border-box;
+          }
+          #municipalitySearch:focus {
+            outline: none;
+            border-color: #4CAF50;
+          }
+          .municipality-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: white;
+          }
+          .municipality-item {
+            padding: 12px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.2s;
+          }
+          .municipality-item:hover {
+            background-color: #f0f8ff;
+          }
+          .municipality-item:last-child {
+            border-bottom: none;
+          }
+          .municipality-item.selected {
+            background-color: #e7f3ff;
+            border-left: 4px solid #4CAF50;
+          }
+          .municipality-name {
+            font-weight: bold;
+            color: #333;
+          }
+          .municipality-id {
+            color: #666;
+            font-size: 12px;
+            margin-top: 4px;
+          }
+          .button-group {
+            text-align: center;
+            margin-top: 30px;
+          }
+          button {
+            margin: 0 10px;
+            padding: 12px 25px;
+            font-size: 14px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+          }
+          .select-btn {
+            background-color: #4CAF50;
+            color: white;
+          }
+          .select-btn:hover {
+            background-color: #45a049;
+          }
+          .select-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+          }
+          .cancel-btn {
+            background-color: #f44336;
+            color: white;
+          }
+          .cancel-btn:hover {
+            background-color: #da190b;
+          }
+          .no-results {
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-style: italic;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h2>🏛️ 自治体選択</h2>
+          <p>フィルタ設定を行う自治体を選択してください</p>
+          
+          <div class="search-container">
+            <input type="text" id="municipalitySearch" placeholder="自治体名で検索..." autocomplete="off">
+          </div>
+          
+          <div class="municipality-list" id="municipalityList">
+            <? for (var messageBoxId in configs) { ?>
+              <div class="municipality-item" data-id="<?= messageBoxId ?>" onclick="selectMunicipality('<?= messageBoxId ?>')">
+                <div class="municipality-name"><?= configs[messageBoxId].name ?></div>
+                <div class="municipality-id">受信箱ID: <?= messageBoxId ?> | 都道府県: <?= configs[messageBoxId].prefecture ?></div>
+              </div>
+            <? } ?>
+          </div>
+          
+          <div class="button-group">
+            <button class="select-btn" id="selectButton" onclick="proceedToFilterConfig()" disabled>
+              ✅ この自治体で設定する
+            </button>
+            <button class="cancel-btn" onclick="google.script.host.close()">
+              ❌ キャンセル
+            </button>
+          </div>
+        </div>
+        
+        <script>
+          let selectedMunicipalityId = null;
+          const searchInput = document.getElementById('municipalitySearch');
+          const municipalityList = document.getElementById('municipalityList');
+          const selectButton = document.getElementById('selectButton');
+          
+          // 検索機能
+          searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const items = municipalityList.querySelectorAll('.municipality-item');
+            let hasVisibleItems = false;
+            
+            items.forEach(function(item) {
+              const name = item.querySelector('.municipality-name').textContent.toLowerCase();
+              const id = item.dataset.id.toLowerCase();
+              const prefecture = item.querySelector('.municipality-id').textContent.toLowerCase();
+              
+              if (name.includes(searchTerm) || id.includes(searchTerm) || prefecture.includes(searchTerm)) {
+                item.style.display = 'block';
+                hasVisibleItems = true;
+              } else {
+                item.style.display = 'none';
+              }
+            });
+            
+            // 検索結果なしの表示
+            let noResultsDiv = document.getElementById('noResults');
+            if (!hasVisibleItems && searchTerm) {
+              if (!noResultsDiv) {
+                noResultsDiv = document.createElement('div');
+                noResultsDiv.id = 'noResults';
+                noResultsDiv.className = 'no-results';
+                noResultsDiv.textContent = '該当する自治体が見つかりませんでした';
+                municipalityList.appendChild(noResultsDiv);
+              }
+              noResultsDiv.style.display = 'block';
+            } else if (noResultsDiv) {
+              noResultsDiv.style.display = 'none';
+            }
+          });
+          
+          // 自治体選択
+          function selectMunicipality(messageBoxId) {
+            // 既存の選択状態をクリア
+            municipalityList.querySelectorAll('.municipality-item').forEach(function(item) {
+              item.classList.remove('selected');
+            });
+            
+            // 新しい選択状態を設定
+            const selectedItem = municipalityList.querySelector('[data-id="' + messageBoxId + '"]');
+            if (selectedItem) {
+              selectedItem.classList.add('selected');
+              selectedMunicipalityId = messageBoxId;
+              selectButton.disabled = false;
+            }
+          }
+          
+          // フィルタ設定画面に進む
+          function proceedToFilterConfig() {
+            if (!selectedMunicipalityId) {
+              alert('自治体を選択してください');
+              return;
+            }
+            
+            // サーバーサイド関数を呼び出してフィルタ設定画面を表示
+            google.script.run
+              .withSuccessHandler(function() {
+                google.script.host.close();
+              })
+              .withFailureHandler(function(error) {
+                alert('エラー: ' + error.toString());
+              })
+              .showFilterConfigForMunicipality(selectedMunicipalityId);
+          }
+          
+          // Enterキーで検索/選択
+          searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+              const visibleItems = Array.from(municipalityList.querySelectorAll('.municipality-item'))
+                .filter(item => item.style.display !== 'none');
+              
+              if (visibleItems.length === 1) {
+                // 検索結果が1つの場合は自動選択
+                selectMunicipality(visibleItems[0].dataset.id);
+              }
+            }
+          });
+        </script>
+      </body>
+    </html>
+  `);
+  
+  // テンプレートにデータを渡す
+  htmlTemplate.configs = configs;
+  
   // HTMLダイアログを表示
-  showFilterConfigHtmlDialog(targetMessageBoxId, configs[targetMessageBoxId]);
+  var htmlOutput = htmlTemplate.evaluate()
+    .setWidth(600)
+    .setHeight(500);
+    
+  SpreadsheetApp.getUi().showModalDialog(htmlOutput, '自治体選択 - Slackフィルタ設定');
+}
+
+/**
+ * 選択された自治体のフィルタ設定画面を表示
+ * @param {string} messageBoxId 受信箱ID
+ */
+function showFilterConfigForMunicipality(messageBoxId) {
+  var configs = loadMunicipalityConfigFromSheet(true);
+  var config = configs[messageBoxId];
+  
+  if (!config) {
+    throw new Error('選択された自治体の設定が見つかりません: ' + messageBoxId);
+  }
+  
+  // フィルタ設定HTMLダイアログを表示
+  showFilterConfigHtmlDialog(messageBoxId, config);
 }
 
 /**
