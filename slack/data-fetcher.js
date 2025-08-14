@@ -29,6 +29,10 @@ function getTicketsFromSheet(messageBoxId) {
     var headers = data[4];
     console.log('シートヘッダー: ' + headers.join(', '));
     
+    // ID→名前変換用のマップを取得
+    var caseCategoriesMap = getCaseCategoriesMap(messageBoxId);
+    var labelsMap = getLabelsMap(messageBoxId);
+    
     var tickets = [];
     
     // データ行をループして該当自治体のチケットを抽出（6行目以降、0ベースで5以降）
@@ -37,17 +41,31 @@ function getTicketsFromSheet(messageBoxId) {
       
       // 受信箱IDが一致するかチェック（A列: 受信箱ID）
       if (row[0] === messageBoxId) {
+        // シートからIDを取得して名前に変換
+        var caseCategoryIdsStr = row[8] && row[8].toString().trim() ? row[8].toString() : '';
+        var labelIdsStr = row[9] && row[9].toString().trim() ? row[9].toString() : '';
+        
+        // IDを配列に変換
+        var caseCategoryIds = caseCategoryIdsStr ? caseCategoryIdsStr.split(', ').filter(function(id) { return id; }) : [];
+        var labelIds = labelIdsStr ? labelIdsStr.split(', ').filter(function(id) { return id; }) : [];
+        
+        // IDを名前に変換
+        var caseCategoryNames = getCategoryNames(caseCategoryIds, caseCategoriesMap);
+        var labelNames = getLabelNames(labelIds, labelsMap);
+        
         var ticket = {
           messageBox_id: row[0], // A列: 受信箱ID
           municipality_name: row[1], // B列: 自治体名
           ticket_id: row[2], // C列: ID
           title: row[3] || '', // D列: タイトル
           status_cd: row[4] || 'open', // E列: ステータス
-          created_at: row[5] || null, // F列: 作成日（Dateオブジェクト）
-          last_updated_at: row[6] || null, // G列: 更新日（Dateオブジェクト）
-          case_category_names: row[7] && row[7].toString().trim() ? row[7].toString().split(', ').filter(function(name) { return name; }) : ['なし'], // H列: チケット分類名
-          label_names: row[8] && row[8].toString().trim() ? row[8].toString().split(', ').filter(function(name) { return name; }) : ['なし'], // I列: ラベル名
-          pending_reason_id: row[9] || null // J列: 保留理由ID
+          created_at: row[6] || null, // G列: 作成日（Dateオブジェクト）
+          last_updated_at: row[7] || null, // H列: 更新日（Dateオブジェクト）
+          case_category_names: caseCategoryNames.length > 0 ? caseCategoryNames : ['なし'], // チケット分類名（変換済み）
+          label_names: labelNames.length > 0 ? labelNames : ['なし'], // ラベル名（変換済み）
+          case_category_ids: caseCategoryIds, // チケット分類ID（フィルタ用）
+          label_ids: labelIds, // ラベルID（フィルタ用）
+          pending_reason_id: row[10] || null // K列: 保留理由ID
         };
         
         tickets.push(ticket);
