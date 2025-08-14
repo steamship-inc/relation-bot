@@ -36,12 +36,10 @@ municipality_config.js
 fetchTickets.js
 ├── チケット取得
 │   ├── fetchOpenTickets() - 全自治体チケット取得（メイン機能）
-│   └── fetchTicketsForMunicipality(config, ticketType) - 個別自治体チケット取得
-├── Slack通知
-│   ├── sendSlackToMunicipality(config, tickets) - 自治体別Slack通知
-│   └── applySlackNotificationFilter(tickets, config) - フィルタ条件適用
+│   └── fetchTicketDetail(messageBoxId, ticketId) - チケット詳細取得
 └── ユーティリティ
-    └── findMunicipalityConfigByName(municipalityName, configs) - 自治体名で設定検索
+    ├── formatDate(isoString) - 日時フォーマット
+    └── parseDate(isoString) - 日時パース
 ```
 
 ### slack_notification.js（Slack通知専用）
@@ -51,7 +49,10 @@ slack_notification.js
 │   ├── manualSendSlack() - UI付き手動送信
 │   ├── selectMunicipalityWithSearchableDialog() - 自治体選択UI
 │   └── processSelectedMunicipality(municipalityCode) - 選択処理
-├── Slack送信
+├── Slack通知（フィルタ機能付き）
+│   ├── sendSlackToMunicipality(tickets, config, isLast) - 自治体別Slack通知
+│   ├── applySlackNotificationFilter(tickets, config) - フィルタ条件適用
+│   └── sendSlackWithRateLimit(tickets, config, isLast) - レート制限対応送信
 │   ├── sendSlack(tickets, config) - Slack通知送信
 │   └── createSlackMessage(tickets, config) - Slackメッセージ構築
 └── ユーティリティ
