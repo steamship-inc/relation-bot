@@ -323,7 +323,7 @@ function showFilterConfigHtmlDialog(messageBoxId, config) {
         <div class="section">
           <h3>🏷️ ラベルフィルタ</h3>
           <div>
-            <strong>含むラベル（以下のラベルが付いているチケットのみ通知）:</strong>
+            <strong>通知対象ラベル（チェックしたラベルのチケットのみ通知します）:</strong>
             <div class="checkbox-group" id="includeLabels">
               <? for (var labelId in labelsMap) { ?>
                 <div class="checkbox-item">
@@ -334,44 +334,18 @@ function showFilterConfigHtmlDialog(messageBoxId, config) {
               <? } ?>
             </div>
           </div>
-          
-          <div style="margin-top: 15px;">
-            <strong>除外ラベル（以下のラベルが付いているチケットは通知しない）:</strong>
-            <div class="checkbox-group" id="excludeLabels">
-              <? for (var labelId in labelsMap) { ?>
-                <div class="checkbox-item">
-                  <input type="checkbox" id="exclude_label_<?= labelId ?>" value="<?= labelId ?>"
-                         <?= (currentFilter.exclude_label_ids && currentFilter.exclude_label_ids.includes(parseInt(labelId))) ? 'checked' : '' ?>>
-                  <label for="exclude_label_<?= labelId ?>"><?= labelId ?>: <?= labelsMap[labelId] ?></label>
-                </div>
-              <? } ?>
-            </div>
-          </div>
         </div>
         
         <div class="section">
           <h3>🗂️ チケット分類フィルタ</h3>
           <div>
-            <strong>含む分類（以下の分類のチケットのみ通知）:</strong>
+            <strong>通知対象分類（チェックした分類のチケットのみ通知します）:</strong>
             <div class="checkbox-group" id="includeCategories">
               <? for (var categoryId in categoriesMap) { ?>
                 <div class="checkbox-item">
                   <input type="checkbox" id="include_category_<?= categoryId ?>" value="<?= categoryId ?>"
                          <?= (currentFilter.include_case_category_ids && currentFilter.include_case_category_ids.includes(parseInt(categoryId))) ? 'checked' : '' ?>>
                   <label for="include_category_<?= categoryId ?>"><?= categoryId ?>: <?= categoriesMap[categoryId] ?></label>
-                </div>
-              <? } ?>
-            </div>
-          </div>
-          
-          <div style="margin-top: 15px;">
-            <strong>除外分類（以下の分類のチケットは通知しない）:</strong>
-            <div class="checkbox-group" id="excludeCategories">
-              <? for (var categoryId in categoriesMap) { ?>
-                <div class="checkbox-item">
-                  <input type="checkbox" id="exclude_category_<?= categoryId ?>" value="<?= categoryId ?>"
-                         <?= (currentFilter.exclude_case_category_ids && currentFilter.exclude_case_category_ids.includes(parseInt(categoryId))) ? 'checked' : '' ?>>
-                  <label for="exclude_category_<?= categoryId ?>"><?= categoryId ?>: <?= categoriesMap[categoryId] ?></label>
                 </div>
               <? } ?>
             </div>
@@ -412,7 +386,7 @@ function showFilterConfigHtmlDialog(messageBoxId, config) {
           function buildConfigFromForm() {
             var config = {};
             
-            // 含むラベル
+            // 通知対象ラベル
             var includeLabels = [];
             document.querySelectorAll('#includeLabels input:checked').forEach(function(cb) {
               includeLabels.push(parseInt(cb.value));
@@ -421,31 +395,13 @@ function showFilterConfigHtmlDialog(messageBoxId, config) {
               config.include_label_ids = includeLabels;
             }
             
-            // 除外ラベル
-            var excludeLabels = [];
-            document.querySelectorAll('#excludeLabels input:checked').forEach(function(cb) {
-              excludeLabels.push(parseInt(cb.value));
-            });
-            if (excludeLabels.length > 0) {
-              config.exclude_label_ids = excludeLabels;
-            }
-            
-            // 含む分類
+            // 通知対象分類
             var includeCategories = [];
             document.querySelectorAll('#includeCategories input:checked').forEach(function(cb) {
               includeCategories.push(parseInt(cb.value));
             });
             if (includeCategories.length > 0) {
               config.include_case_category_ids = includeCategories;
-            }
-            
-            // 除外分類
-            var excludeCategories = [];
-            document.querySelectorAll('#excludeCategories input:checked').forEach(function(cb) {
-              excludeCategories.push(parseInt(cb.value));
-            });
-            if (excludeCategories.length > 0) {
-              config.exclude_case_category_ids = excludeCategories;
             }
             
             return config;

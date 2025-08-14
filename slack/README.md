@@ -75,7 +75,7 @@ sequenceDiagram
         alt Slackチャンネル設定あり
             FetchTickets->>Notifications: sendSlackToMunicipality(tickets, config, isLast)
             Notifications->>Notifications: applySlackNotificationFilter(tickets, config)
-            Note over Notifications: フィルタ条件適用<br/>- include_label_ids<br/>- exclude_label_ids<br/>- case_category_ids<br/>- priority_levels
+            Note over Notifications: フィルタ条件適用<br/>- include_label_ids<br/>- include_case_category_ids<br/>- priority_levels
             
             alt フィルタ条件該当チケットあり
                 Notifications->>Notifications: sendSlackWithRateLimit(tickets, config, isLast)

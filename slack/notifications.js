@@ -241,28 +241,12 @@ function applySlackNotificationFilter(tickets, config) {
       if (!hasIncludeLabel) shouldNotify = false;
     }
     
-    // ラベルIDフィルタ（除く）
-    if (filterConditions.exclude_label_ids && filterConditions.exclude_label_ids.length > 0) {
-      var hasExcludeLabel = filterConditions.exclude_label_ids.some(function(labelId) {
-        return ticket.label_ids && ticket.label_ids.includes(labelId);
-      });
-      if (hasExcludeLabel) shouldNotify = false;
-    }
-    
     // チケット分類IDフィルタ（含む）
     if (filterConditions.include_case_category_ids && filterConditions.include_case_category_ids.length > 0) {
       var hasIncludeCategory = filterConditions.include_case_category_ids.some(function(categoryId) {
         return ticket.case_category_ids && ticket.case_category_ids.includes(categoryId);
       });
       if (!hasIncludeCategory) shouldNotify = false;
-    }
-    
-    // チケット分類IDフィルタ（除く）
-    if (filterConditions.exclude_case_category_ids && filterConditions.exclude_case_category_ids.length > 0) {
-      var hasExcludeCategory = filterConditions.exclude_case_category_ids.some(function(categoryId) {
-        return ticket.case_category_ids && ticket.case_category_ids.includes(categoryId);
-      });
-      if (hasExcludeCategory) shouldNotify = false;
     }
     
     // 優先度フィルタ
