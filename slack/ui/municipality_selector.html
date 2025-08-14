@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8">
+  <head>    <!-- JavaScript読み込み: 強制出力スクリプトレットタグでmunicipal_selector_js.htmlを埋め込み -->
+    <?!= HtmlService.createHtmlOutputFromFile('slack/ui/municipality_selector_js').getContent(); ?>   <meta charset="utf-8">
     <title>自治体選択</title>
     <!-- CSS読み込み: 強制出力スクリプトレットタグでmunicipal_selector_css.htmlを埋め込み -->
-    <?!= HtmlService.createHtmlOutputFromFile('slack/municipality_selector_css').getContent(); ?>
+    <?!= HtmlService.createHtmlOutputFromFile('slack/ui/municipality_selector_css').getContent(); ?>
   </head>
   <body>
     <div class="container">

@@ -23,7 +23,7 @@ function selectMunicipalityWithSearchableDialog(configs) {
     }
 
     // HTMLテンプレートを使用してページを作成
-    var htmlTemplate = HtmlService.createTemplateFromFile('slack/municipality_selector');
+    var htmlTemplate = HtmlService.createTemplateFromFile('slack/ui/municipality_selector');
     
     // テンプレート変数を設定
     htmlTemplate.configs = configs;
