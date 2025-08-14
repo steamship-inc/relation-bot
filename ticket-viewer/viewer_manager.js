@@ -8,8 +8,9 @@
  */
 function openTicketDetailPage() {
   try {
-    // HTMLファイルからページを作成
-    var htmlOutput = HtmlService.createHtmlOutputFromFile('ticket-viewer/viewer_page')
+    // HTMLテンプレートからページを作成（スクリプトレット実行のため）
+    var htmlOutput = HtmlService.createTemplateFromFile('ticket-viewer/viewer_page')
+      .evaluate()
       .setTitle('🎫 チケット詳細 - re:lation連携')
       .setWidth(1200)
       .setHeight(800);
