@@ -54,14 +54,35 @@
   function sanitizeHtml(text) {
     if (!text) return '';
     
-    // HTMLタグを除去し、HTMLエンティティをデコードしてからエスケープ
-    var tempDiv = document.createElement('div');
-    tempDiv.innerHTML = text;
-    var plainText = tempDiv.textContent || tempDiv.innerText || '';
-    
-    // プレーンテキストをエスケープして、改行のみ<br>タグに変換
-    var escaped = escapeHtml(plainText);
-    return escaped.replace(/\n/g, '<br>');
+    try {
+      // HTMLタグとスタイル情報を除去し、実際のテキストコンテンツのみを抽出
+      var tempDiv = document.createElement('div');
+      tempDiv.innerHTML = text;
+      
+      // style, script タグを完全に除去
+      var styleTags = tempDiv.querySelectorAll('style, script');
+      for (var i = 0; i < styleTags.length; i++) {
+        styleTags[i].remove();
+      }
+      
+      // プレーンテキストを抽出
+      var plainText = tempDiv.textContent || tempDiv.innerText || '';
+      
+      // 複数の空白文字のみを整理（改行は維持）
+      plainText = plainText
+        .replace(/[ \t]+/g, ' ')        // スペースとタブのみ1つに（改行は維持）
+        .replace(/^\s+|\s+$/gm, '')     // 各行の前後の空白を除去
+        .replace(/\n{3,}/g, '\n\n');    // 3つ以上の連続改行を2つに制限
+      
+      // プレーンテキストをエスケープして、改行を<br>タグに変換
+      var escaped = escapeHtml(plainText);
+      return escaped.replace(/\n/g, '<br>');
+      
+    } catch (error) {
+      console.error('HTML処理エラー:', error);
+      // エラーの場合は単純なエスケープのみ実行
+      return escapeHtml(text);
+    }
   }
 
   function formatDate(dateString) {
