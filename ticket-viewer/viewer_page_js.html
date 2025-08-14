@@ -159,7 +159,7 @@
         municipalitySelect.innerHTML = '<option value="">❌ 読み込み失敗</option>';
         showError('自治体一覧の読み込みに失敗しました: ' + error.toString());
       })
-      .loadMunicipalityConfigFromSheet();
+      .loadMunicipalitiesFromOpenTicketSheet();
   }
 
   function populateMunicipalitySelect() {
