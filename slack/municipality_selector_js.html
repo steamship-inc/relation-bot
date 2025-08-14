@@ -1,0 +1,211 @@
+<script>
+  var selectedMunicipalityCode = null;
+  var configs = {};
+
+  function setConfigs(configData) {
+    configs = configData;
+    console.log('Configs設定完了:', Object.keys(configs).length, '自治体');
+  }
+
+  function filterMunicipalities() {
+    var searchTerm = document.getElementById('searchBox').value.toLowerCase();
+    var items = document.querySelectorAll('.municipality-item');
+    var noResultsMsg = document.querySelector('.no-results');
+    var hasResults = false;
+
+    // 既存の「検索結果なし」メッセージを削除
+    if (noResultsMsg) {
+      noResultsMsg.remove();
+    }
+
+    items.forEach(function(item) {
+      var name = item.querySelector('.municipality-name').textContent.toLowerCase();
+      var channel = item.querySelector('.municipality-channel').textContent.toLowerCase();
+      
+      if (searchTerm === '' || name.includes(searchTerm) || channel.includes(searchTerm)) {
+        item.classList.remove('hidden');
+        hasResults = true;
+      } else {
+        item.classList.add('hidden');
+      }
+    });
+
+    // 検索結果がない場合のメッセージ表示
+    if (!hasResults && searchTerm !== '') {
+      var msg = document.createElement('div');
+      msg.className = 'no-results';
+      msg.textContent = '「' + searchTerm + '」に一致する自治体が見つかりません';
+      document.getElementById('municipalityList').appendChild(msg);
+    }
+  }
+
+  function selectMunicipality(municipalityId) {
+    // 既存の選択を解除
+    document.querySelectorAll('.municipality-item').forEach(function(item) {
+      item.classList.remove('selected');
+    });
+
+    // 新しい選択を設定
+    var selectedItem = document.querySelector('[data-id="' + municipalityId + '"]');
+    if (selectedItem && !selectedItem.classList.contains('hidden')) {
+      selectedItem.classList.add('selected');
+      selectedMunicipalityCode = municipalityId;
+      document.getElementById('confirmBtn').disabled = false;
+      
+      // 選択された自治体名を表示
+      var municipalityName = configs[municipalityId].name;
+      document.getElementById('confirmBtn').textContent = '「' + municipalityName + '」に送信';
+    }
+  }
+
+  function confirmSelection() {
+    console.log('confirmSelection呼び出し, selectedMunicipalityCode:', selectedMunicipalityCode);
+    if (selectedMunicipalityCode) {
+      // ボタンを無効化して重複実行を防止
+      var confirmBtn = document.getElementById('confirmBtn');
+      confirmBtn.disabled = true;
+      
+      console.log('processSelectedMunicipality呼び出し開始:', selectedMunicipalityCode);
+      
+      // 進捗表示エリアを作成
+      showProgressDialog(configs[selectedMunicipalityCode].name);
+      
+      // 選択結果を直接渡してダイアログを閉じる
+      setTimeout(function() { updateProgress('config', 'success'); }, 500);
+      setTimeout(function() { updateProgress('tickets', 'success'); }, 1000);
+      setTimeout(function() { updateProgress('message', 'success'); }, 1200);
+      setTimeout(function() { updateProgress('slack', 'success'); }, 1500);
+      
+      google.script.run
+        .withSuccessHandler(function() {
+          console.log('processSelectedMunicipality成功');
+          updateProgress('✅ 送信完了', 'success');
+          setTimeout(function() {
+            google.script.host.close();
+          }, 2000);
+        })
+        .withFailureHandler(function(error) {
+          console.error('processSelectedMunicipality失敗:', error);
+          updateProgress('❌ エラー: ' + error, 'error');
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = '「' + configs[selectedMunicipalityCode].name + '」に送信';
+          setTimeout(function() {
+            hideProgressDialog();
+          }, 3000);
+        })
+        .processSelectedMunicipality(selectedMunicipalityCode);
+    } else {
+      console.log('自治体が選択されていません');
+    }
+  }
+
+  function showProgressDialog(municipalityName) {
+    // 既存のコンテナを隠す
+    document.querySelector('.container').style.display = 'none';
+    
+    // 進捗表示エリアを作成
+    var progressContainer = document.createElement('div');
+    progressContainer.id = 'progressContainer';
+    progressContainer.className = 'progress-container';
+    progressContainer.innerHTML = 
+      '<div class="progress-header">' +
+        '<h2>🚀 「' + municipalityName + '」への送信中</h2>' +
+      '</div>' +
+      '<div class="progress-steps">' +
+        '<div class="progress-step" id="step1">' +
+          '<div class="step-icon">⏳</div>' +
+          '<div class="step-text">自治体設定を取得中...</div>' +
+          '<div class="step-time">0.1〜0.3秒</div>' +
+        '</div>' +
+        '<div class="progress-step" id="step2">' +
+          '<div class="step-icon">⏳</div>' +
+          '<div class="step-text">チケットデータを抽出中...</div>' +
+          '<div class="step-time">0.1〜0.5秒</div>' +
+        '</div>' +
+        '<div class="progress-step" id="step3">' +
+          '<div class="step-icon">⏳</div>' +
+          '<div class="step-text">Slackメッセージを作成中...</div>' +
+          '<div class="step-time">0.01〜0.05秒</div>' +
+        '</div>' +
+        '<div class="progress-step" id="step4">' +
+          '<div class="step-icon">⏳</div>' +
+          '<div class="step-text">Slack APIに送信中...</div>' +
+          '<div class="step-time">0.5〜3秒</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="progress-result" id="progressResult"></div>';
+    
+    document.body.appendChild(progressContainer);
+  }
+
+  function updateProgress(step, status, message) {
+    var stepMap = {
+      'config': 'step1',
+      'tickets': 'step2', 
+      'message': 'step3',
+      'slack': 'step4'
+    };
+    
+    if (stepMap[step]) {
+      var stepElement = document.getElementById(stepMap[step]);
+      var icon = stepElement.querySelector('.step-icon');
+      var text = stepElement.querySelector('.step-text');
+      
+      if (status === 'success') {
+        icon.textContent = '✅';
+        stepElement.classList.add('completed');
+      } else if (status === 'skipped') {
+        icon.textContent = '⏭️';
+        stepElement.classList.add('skipped');
+      } else if (status === 'error') {
+        icon.textContent = '❌';
+        stepElement.classList.add('error');
+      }
+      
+      if (message) {
+        text.textContent = message;
+      }
+    } else {
+      // 最終結果の表示
+      var resultElement = document.getElementById('progressResult');
+      resultElement.textContent = step;
+      resultElement.className = 'progress-result ' + status;
+    }
+  }
+
+  function hideProgressDialog() {
+    var progressContainer = document.getElementById('progressContainer');
+    if (progressContainer) {
+      progressContainer.remove();
+    }
+    document.querySelector('.container').style.display = 'block';
+  }
+
+  // DOMロード後の初期化
+  function initializeDialog() {
+    // エンターキーで検索結果が1つの場合は自動選択
+    var searchBox = document.getElementById('searchBox');
+    if (searchBox) {
+      searchBox.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          var visibleItems = document.querySelectorAll('.municipality-item:not(.hidden)');
+          if (visibleItems.length === 1) {
+            var municipalityId = visibleItems[0].getAttribute('data-id');
+            selectMunicipality(municipalityId);
+            confirmSelection();
+          }
+        }
+      });
+
+      // 初期フォーカス
+      searchBox.focus();
+    }
+  }
+
+  // ページ読み込み完了後に初期化を実行
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeDialog);
+  } else {
+    initializeDialog();
+  }
+</script>

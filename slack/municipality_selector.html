@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>自治体選択</title>
+    <!-- CSS読み込み: 強制出力スクリプトレットタグでmunicipal_selector_css.htmlを埋め込み -->
+    <?!= HtmlService.createHtmlOutputFromFile('slack/municipality_selector_css').getContent(); ?>
+  </head>
+  <body>
+    <div class="container">
+      <h2>🏛️ 自治体選択 - 手動送信</h2>
+      <input 
+        type="text" 
+        id="searchBox" 
+        class="search-box" 
+        placeholder="自治体名で検索（例：山鹿、札幌）..." 
+        oninput="filterMunicipalities()"
+      >
+      <div id="municipalityList" class="municipality-list">
+        <?!= municipalityItemsHtml ?>
+      </div>
+      <div class="buttons">
+        <button class="btn btn-primary" onclick="confirmSelection()" id="confirmBtn" disabled>
+          選択した自治体に送信
+        </button>
+        <button class="btn btn-secondary" onclick="google.script.host.close()">
+          キャンセル
+        </button>
+      </div>
+    </div>
+
+    <!-- JavaScript読み込み: 強制出力スクリプトレットタグでmunicipality_selector_js.htmlを埋め込み -->
+    <?!= HtmlService.createHtmlOutputFromFile('slack/municipality_selector_js').getContent(); ?>
+    
+    <script>
+      // configsを直接設定（HTMLTemplateから渡される）
+      setConfigs(<?!= JSON.stringify(configs) ?>);
+      
+      // 初期化実行
+      initializeDialog();
+    </script>
+  </body>
+</html>
