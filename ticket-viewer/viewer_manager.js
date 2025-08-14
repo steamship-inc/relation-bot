@@ -4,6 +4,28 @@
  */
 
 /**
+ * チケット詳細ページを新しいタブで開く
+ */
+function openTicketDetailPage() {
+  try {
+    // HTMLファイルからページを作成
+    var htmlOutput = HtmlService.createHtmlOutputFromFile('ticket-viewer/viewer_page')
+      .setTitle('🎫 チケット詳細 - re:lation連携')
+      .setWidth(1200)
+      .setHeight(800);
+    
+    // 新しいタブで開く
+    SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'チケット詳細');
+    
+    console.log('🎫 チケット詳細ページ表示');
+    
+  } catch (error) {
+    console.error('❌ チケット詳細ページ表示失敗: ' + error.message);
+    SpreadsheetApp.getUi().alert('エラー', 'チケット詳細ページの表示に失敗しました。\n\n' + error.toString(), SpreadsheetApp.getUi().ButtonSet.OK);
+  }
+}
+
+/**
  * 指定受信箱のチケット一覧を取得（タイトルはシートから取得）
  * @param {string} messageBoxId 受信箱ID
  * @return {Array} チケット一覧
@@ -133,28 +155,6 @@ function fetchTicketDetailWithSheetTitle(messageBoxId, ticketId) {
   } catch (error) {
     console.error('❌ チケット詳細取得失敗: ' + error.message);
     throw error;
-  }
-}
-
-/**
- * チケット詳細ページを新しいタブで開く
- */
-function openTicketDetailPage() {
-  try {
-    // HTMLファイルからページを作成
-    var htmlOutput = HtmlService.createHtmlOutputFromFile('ticket-viewer/viewer_page')
-      .setTitle('🎫 チケット詳細 - re:lation連携')
-      .setWidth(1200)
-      .setHeight(800);
-    
-    // 新しいタブで開く
-    SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'チケット詳細');
-    
-    console.log('🎫 チケット詳細ページ表示');
-    
-  } catch (error) {
-    console.error('❌ チケット詳細ページ表示失敗: ' + error.message);
-    SpreadsheetApp.getUi().alert('エラー', 'チケット詳細ページの表示に失敗しました。\n\n' + error.toString(), SpreadsheetApp.getUi().ButtonSet.OK);
   }
 }
 
