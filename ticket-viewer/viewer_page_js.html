@@ -8,9 +8,6 @@
     if (isLoading) return;
     isLoading = true;
     
-    document.getElementById('loadBtn').disabled = true;
-    document.getElementById('loadBtn').textContent = '⏳ 読み込み中...';
-    
     document.getElementById('ticketContent').innerHTML = `
       <div class="loading">
         <div class="spinner"></div>
@@ -21,8 +18,6 @@
 
   function showError(message) {
     isLoading = false;
-    document.getElementById('loadBtn').disabled = false;
-    document.getElementById('loadBtn').textContent = '📄 詳細を表示';
     
     document.getElementById('ticketContent').innerHTML = `
       <div class="error">
@@ -37,8 +32,6 @@
 
   function showEmpty() {
     isLoading = false;
-    document.getElementById('loadBtn').disabled = false;
-    document.getElementById('loadBtn').textContent = '📄 詳細を表示';
     
     document.getElementById('ticketContent').innerHTML = `
       <div class="empty-state">
@@ -77,14 +70,13 @@
   function loadTicketList() {
     var municipalityId = document.getElementById('municipalitySelect').value;
     var ticketSelect = document.getElementById('ticketSelect');
-    var loadBtn = document.getElementById('loadBtn');
     
     // 自治体が選択されていない場合
     if (!municipalityId) {
       ticketSelect.innerHTML = '<option value="">まず自治体を選択してください</option>';
       ticketSelect.disabled = true;
-      loadBtn.disabled = true;
       currentTickets = [];
+      showEmpty();
       return;
     }
     
@@ -97,7 +89,6 @@
     // ローディング状態に設定
     ticketSelect.innerHTML = '<option value="">📥 チケット一覧を読み込み中...</option>';
     ticketSelect.disabled = true;
-    loadBtn.disabled = true;
     
     // チケット一覧を取得
     google.script.run
@@ -114,12 +105,10 @@
 
   function populateTicketSelect() {
     var ticketSelect = document.getElementById('ticketSelect');
-    var loadBtn = document.getElementById('loadBtn');
     
     if (currentTickets.length === 0) {
       ticketSelect.innerHTML = '<option value="">📭 チケットがありません</option>';
       ticketSelect.disabled = true;
-      loadBtn.disabled = true;
       return;
     }
     
@@ -136,8 +125,14 @@
     
     ticketSelect.innerHTML = optionsHtml;
     ticketSelect.disabled = false;
+    
+    // チケット選択時に自動で詳細を表示
     ticketSelect.onchange = function() {
-      loadBtn.disabled = !this.value;
+      if (this.value) {
+        loadTicketDetail();
+      } else {
+        showEmpty();
+      }
     };
     
     console.log('🎫 チケット一覧読み込み完了: ' + currentTickets.length + '件');
@@ -218,8 +213,6 @@
 
   function displayTicketDetail(ticketDetail, municipality) {
     isLoading = false;
-    document.getElementById('loadBtn').disabled = false;
-    document.getElementById('loadBtn').textContent = '📄 詳細を表示';
     currentTicketDetail = ticketDetail;
     
     if (!ticketDetail) {
