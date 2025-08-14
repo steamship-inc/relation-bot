@@ -41,42 +41,6 @@ function selectMunicipalityWithSearchableDialog(configs) {
     return null; // この戻り値は使われない
   } catch (error) {
     console.error('検索可能ダイアログエラー: ' + error.toString());
-    // フォールバック：シンプルな選択方式
-    return selectMunicipalityWithSimplePrompt(configs);
+    throw error; // エラーを再スローして呼び出し元に伝える
   }
-}
-
-/**
- * フォールバック：シンプルなプロンプト選択
- * @param {Object} configs 全自治体設定
- * @return {Object|null} 選択された自治体設定
- */
-function selectMunicipalityWithSimplePrompt(configs) {
-  var ui = SpreadsheetApp.getUi();
-  var configIds = Object.keys(configs);
-  
-  var options = [];
-  for (var i = 0; i < configIds.length; i++) {
-    var config = configs[configIds[i]];
-    options.push((i + 1) + '. ' + config.name + ' (' + config.slackChannel + ')');
-  }
-  
-  var optionsText = options.join('\\n');
-  var response = ui.prompt(
-    '自治体選択',
-    '手動送信する自治体を選択してください:\\n\\n' + optionsText + '\\n\\n番号を入力してください (1-' + configIds.length + '):',
-    ui.ButtonSet.OK_CANCEL
-  );
-  
-  if (response.getSelectedButton() === ui.Button.OK) {
-    var input = response.getResponseText();
-    var selectedNumber = parseInt(input);
-    
-    if (selectedNumber >= 1 && selectedNumber <= configIds.length) {
-      var selectedId = configIds[selectedNumber - 1];
-      return configs[selectedId];
-    }
-  }
-  
-  return null;
 }
