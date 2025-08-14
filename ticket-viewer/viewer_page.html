@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <title>チケット詳細 - re:lation連携</title>
+  <!-- CSS読み込み: 強制出力スクリプトレットタグでviewer_page_css.htmlを埋め込み -->
   <?!= HtmlService.createHtmlOutputFromFile('ticket-viewer/viewer_page_css').getContent(); ?>
 </head>
 <body>
@@ -44,6 +45,7 @@
     </div>
   </div>
 
+  <!-- JavaScript読み込み: 強制出力スクリプトレットタグでviewer_page_js.htmlを埋め込み -->
   <?!= HtmlService.createHtmlOutputFromFile('ticket-viewer/viewer_page_js').getContent(); ?>
 </body>
 </html>
