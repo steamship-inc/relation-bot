@@ -231,17 +231,6 @@ function fetchOpenTickets() {
 
 
 /**
- * ISO 8601形式の日時を読みやすい形式に変換
- * @param {string} isoString ISO 8601形式の日時文字列
- * @return {string} 読みやすい形式の日時 (yyyy/MM/dd HH:mm)
- */
-function formatDate(isoString) {
-  if (!isoString) return '';
-  var date = new Date(isoString);
-  return Utilities.formatDate(date, 'Asia/Tokyo', 'yyyy/MM/dd HH:mm');
-}
-
-/**
  * ISO 8601形式の日時をDateオブジェクトに変換
  * @param {string} isoString ISO 8601形式の日時文字列
  * @return {Date|string} Dateオブジェクトまたは空文字列
