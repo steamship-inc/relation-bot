@@ -30,7 +30,7 @@ function openTicketDetailPage() {
  * 🎫未対応チケットシートから自治体一覧を取得（ticket-viewer専用）
  * @return {Object} 受信箱IDをキーとした自治体情報オブジェクト
  */
-function loadMunicipalitiesFromOpenTicketSheet() {
+function loadMunicipalities() {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName('🎫未対応チケット');

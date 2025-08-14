@@ -154,7 +154,7 @@
         municipalitySelect.innerHTML = '<option value="">❌ 読み込み失敗</option>';
         showError('自治体一覧の読み込みに失敗しました: ' + error.toString());
       })
-      .loadMunicipalitiesFromOpenTicketSheet();
+      .loadMunicipalities();
   }
 
   function populateMunicipalitySelect() {
@@ -253,8 +253,6 @@
       `;
     }
 
-    var ticketUrl = `https://www.relation.jp/tickets/#/${municipality.messageBoxId}/tickets/open/p1/${ticketDetail.ticket_id}`;
-
     document.getElementById('ticketContent').innerHTML = `
       <div class="ticket-detail">
         <div class="ticket-header">
@@ -285,7 +283,6 @@
               <span class="meta-value">${formatDate(ticketDetail.last_updated_at)}</span>
             </div>
           </div>
-          <a href="${ticketUrl}" target="_blank" class="external-link">🔗 re:lationで開く</a>
         </div>
         
         <div class="messages-section">

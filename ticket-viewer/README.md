@@ -7,19 +7,17 @@
 ```mermaid
 sequenceDiagram
     participant User as ユーザー
-    participant Menu as メニュー
     participant Modal as モーダル画面
     participant GAS as Google Apps Script
-    participant Sheet as スプレッドシート
+    participant TicketSheet as 🎫未対応チケットシート
     participant API as re:lation API
     
     %% 初期化フロー
-    User->>Menu: 📋 詳細ページで表示 クリック
-    Menu->>GAS: openTicketDetailPage()
+    User->>GAS: 📋 詳細ページで表示<br/>openTicketDetailPage()
     GAS->>Modal: HTMLモーダル表示
-    Modal->>GAS: loadMunicipalitiesFromOpenTicketSheet()
-    GAS->>Sheet: 🎫未対応チケット読み込み
-    Sheet-->>GAS: 自治体リスト
+    Modal->>GAS: loadMunicipalities()
+    GAS->>TicketSheet: 🏛️自治体一覧読み込み<br/>(A列:受信箱ID, B列:自治体名)
+    TicketSheet-->>GAS: 自治体リスト
     GAS-->>Modal: 自治体データ返却
     Modal->>Modal: 自治体セレクトボックス表示
     
@@ -31,8 +29,8 @@ sequenceDiagram
     API-->>GAS: チケット一覧データ
     
     loop チケット毎にタイトル取得
-        GAS->>Sheet: getTicketTitleFromSheet(ticketId)
-        Sheet-->>GAS: チケットタイトル
+        GAS->>TicketSheet: getTicketTitleFromSheet(ticketId)<br/>(C列:チケットID, D列:タイトル)
+        TicketSheet-->>GAS: チケットタイトル
     end
     
     GAS-->>Modal: チケット一覧（タイトル付き）
@@ -43,16 +41,11 @@ sequenceDiagram
     Modal->>GAS: fetchTicketDetailWithSheetTitle(messageBoxId, ticketId)
     GAS->>API: GET /api/v2/{messageBoxId}/tickets/{ticketId}
     API-->>GAS: チケット詳細データ
-    GAS->>Sheet: getTicketTitleFromSheet(ticketId)
-    Sheet-->>GAS: シートからタイトル取得
+    GAS->>TicketSheet: getTicketTitleFromSheet(ticketId)<br/>(C列:チケットID, D列:タイトル)
+    TicketSheet-->>GAS: シートからタイトル取得
     GAS->>GAS: タイトル上書き処理
     GAS-->>Modal: チケット詳細（シートタイトル付き）
     Modal->>Modal: チケット詳細表示
-    Modal->>Modal: re:lationリンク生成
-    
-    %% 外部リンク
-    User->>Modal: 🔗 re:lationで開く クリック
-    Modal->>API: 新しいタブでre:lation開く
 ```
 
 ## データソースとAPI
@@ -74,7 +67,7 @@ sequenceDiagram
 
 ### 主要関数
 - `openTicketDetailPage()`: モーダルダイアログ表示
-- `loadMunicipalitiesFromOpenTicketSheet()`: 自治体一覧取得
+- `loadMunicipalities()`: 自治体一覧取得
 - `fetchTicketList(messageBoxId)`: チケット一覧取得
 - `fetchTicketDetailWithSheetTitle()`: チケット詳細取得
 - `getTicketTitleFromSheet(ticketId)`: シートからタイトル取得
