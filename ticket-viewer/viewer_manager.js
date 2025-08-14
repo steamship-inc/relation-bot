@@ -27,6 +27,63 @@ function openTicketDetailPage() {
 }
 
 /**
+ * 🎫未対応チケットシートから自治体一覧を取得（ticket-viewer専用）
+ * @return {Object} 受信箱IDをキーとした自治体情報オブジェクト
+ */
+function loadMunicipalitiesFromOpenTicketSheet() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('🎫未対応チケット');
+    
+    if (!sheet) {
+      throw new Error('🎫未対応チケットシートが見つかりません。\n先に「🟩 re:lation」→「🎫未対応チケット取得」を実行してください。');
+    }
+    
+    var data = sheet.getDataRange().getValues();
+    
+    if (data.length <= 5) { // ヘッダー行（5行目）を除く
+      throw new Error('🎫未対応チケットシートにデータがありません。\n先に「🟩 re:lation」→「🎫未対応チケット取得」を実行してください。');
+    }
+    
+    var municipalities = {};
+    var processedIds = new Set(); // 重複チェック用
+    
+    // データ行をループして自治体情報を取得（6行目以降、0ベースで5以降）
+    for (var i = 5; i < data.length; i++) {
+      var row = data[i];
+      
+      var messageBoxId = row[0]; // A列: 受信箱ID
+      var municipalityName = row[1]; // B列: 自治体名
+      
+      // 受信箱IDまたは自治体名が空の場合はスキップ
+      if (!messageBoxId || !municipalityName) {
+        continue;
+      }
+      
+      // 重複チェック（同じ受信箱IDは1つだけ保持）
+      if (processedIds.has(messageBoxId)) {
+        continue;
+      }
+      
+      municipalities[messageBoxId] = {
+        messageBoxId: messageBoxId,
+        name: municipalityName
+      };
+      
+      processedIds.add(messageBoxId);
+    }
+    
+    console.log('🏛️ 未対応チケットシートから自治体情報読み込み完了: ' + Object.keys(municipalities).length + '件');
+    
+    return municipalities;
+    
+  } catch (error) {
+    console.error('❌ 自治体情報読み込み失敗: ' + error.message);
+    throw error;
+  }
+}
+
+/**
  * 指定受信箱のチケット一覧を取得（タイトルはシートから取得）
  * @param {string} messageBoxId 受信箱ID
  * @return {Array} チケット一覧
@@ -155,63 +212,6 @@ function fetchTicketDetailWithSheetTitle(messageBoxId, ticketId) {
     
   } catch (error) {
     console.error('❌ チケット詳細取得失敗: ' + error.message);
-    throw error;
-  }
-}
-
-/**
- * 🎫未対応チケットシートから自治体一覧を取得（ticket-viewer専用）
- * @return {Object} 受信箱IDをキーとした自治体情報オブジェクト
- */
-function loadMunicipalitiesFromOpenTicketSheet() {
-  try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName('🎫未対応チケット');
-    
-    if (!sheet) {
-      throw new Error('🎫未対応チケットシートが見つかりません。\n先に「🟩 re:lation」→「🎫未対応チケット取得」を実行してください。');
-    }
-    
-    var data = sheet.getDataRange().getValues();
-    
-    if (data.length <= 5) { // ヘッダー行（5行目）を除く
-      throw new Error('🎫未対応チケットシートにデータがありません。\n先に「🟩 re:lation」→「🎫未対応チケット取得」を実行してください。');
-    }
-    
-    var municipalities = {};
-    var processedIds = new Set(); // 重複チェック用
-    
-    // データ行をループして自治体情報を取得（6行目以降、0ベースで5以降）
-    for (var i = 5; i < data.length; i++) {
-      var row = data[i];
-      
-      var messageBoxId = row[0]; // A列: 受信箱ID
-      var municipalityName = row[1]; // B列: 自治体名
-      
-      // 受信箱IDまたは自治体名が空の場合はスキップ
-      if (!messageBoxId || !municipalityName) {
-        continue;
-      }
-      
-      // 重複チェック（同じ受信箱IDは1つだけ保持）
-      if (processedIds.has(messageBoxId)) {
-        continue;
-      }
-      
-      municipalities[messageBoxId] = {
-        messageBoxId: messageBoxId,
-        name: municipalityName
-      };
-      
-      processedIds.add(messageBoxId);
-    }
-    
-    console.log('🏛️ 未対応チケットシートから自治体情報読み込み完了: ' + Object.keys(municipalities).length + '件');
-    
-    return municipalities;
-    
-  } catch (error) {
-    console.error('❌ 自治体情報読み込み失敗: ' + error.message);
     throw error;
   }
 }
