@@ -321,22 +321,6 @@ function showFilterConfigHtmlDialog(messageBoxId, config) {
         <p><strong>受信箱ID:</strong> <?= messageBoxId ?></p>
         
         <div class="section">
-          <h3>🏷️ ラベルフィルタ</h3>
-          <div>
-            <strong>通知対象ラベル（チェックしたラベルのチケットのみ通知します）:</strong>
-            <div class="checkbox-group" id="includeLabels">
-              <? for (var labelId in labelsMap) { ?>
-                <div class="checkbox-item">
-                  <input type="checkbox" id="include_label_<?= labelId ?>" value="<?= labelId ?>" 
-                         <?= (currentFilter.include_label_ids && currentFilter.include_label_ids.includes(parseInt(labelId))) ? 'checked' : '' ?>>
-                  <label for="include_label_<?= labelId ?>"><?= labelId ?>: <?= labelsMap[labelId] ?></label>
-                </div>
-              <? } ?>
-            </div>
-          </div>
-        </div>
-        
-        <div class="section">
           <h3>🗂️ チケット分類フィルタ</h3>
           <div>
             <strong>通知対象分類（チェックした分類のチケットのみ通知します）:</strong>
@@ -346,6 +330,22 @@ function showFilterConfigHtmlDialog(messageBoxId, config) {
                   <input type="checkbox" id="include_category_<?= categoryId ?>" value="<?= categoryId ?>"
                          <?= (currentFilter.include_case_category_ids && currentFilter.include_case_category_ids.includes(parseInt(categoryId))) ? 'checked' : '' ?>>
                   <label for="include_category_<?= categoryId ?>"><?= categoryId ?>: <?= categoriesMap[categoryId] ?></label>
+                </div>
+              <? } ?>
+            </div>
+          </div>
+        </div>
+        
+        <div class="section">
+          <h3>🏷️ ラベルフィルタ</h3>
+          <div>
+            <strong>通知対象ラベル（チェックしたラベルのチケットのみ通知します）:</strong>
+            <div class="checkbox-group" id="includeLabels">
+              <? for (var labelId in labelsMap) { ?>
+                <div class="checkbox-item">
+                  <input type="checkbox" id="include_label_<?= labelId ?>" value="<?= labelId ?>" 
+                         <?= (currentFilter.include_label_ids && currentFilter.include_label_ids.includes(parseInt(labelId))) ? 'checked' : '' ?>>
+                  <label for="include_label_<?= labelId ?>"><?= labelId ?>: <?= labelsMap[labelId] ?></label>
                 </div>
               <? } ?>
             </div>
@@ -386,15 +386,6 @@ function showFilterConfigHtmlDialog(messageBoxId, config) {
           function buildConfigFromForm() {
             var config = {};
             
-            // 通知対象ラベル
-            var includeLabels = [];
-            document.querySelectorAll('#includeLabels input:checked').forEach(function(cb) {
-              includeLabels.push(parseInt(cb.value));
-            });
-            if (includeLabels.length > 0) {
-              config.include_label_ids = includeLabels;
-            }
-            
             // 通知対象分類
             var includeCategories = [];
             document.querySelectorAll('#includeCategories input:checked').forEach(function(cb) {
@@ -402,6 +393,15 @@ function showFilterConfigHtmlDialog(messageBoxId, config) {
             });
             if (includeCategories.length > 0) {
               config.include_case_category_ids = includeCategories;
+            }
+            
+            // 通知対象ラベル
+            var includeLabels = [];
+            document.querySelectorAll('#includeLabels input:checked').forEach(function(cb) {
+              includeLabels.push(parseInt(cb.value));
+            });
+            if (includeLabels.length > 0) {
+              config.include_label_ids = includeLabels;
             }
             
             return config;
