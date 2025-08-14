@@ -133,40 +133,13 @@ function processSelectedMunicipality(municipalityCode) {
     console.log('チケット件数: ' + tickets.length);
     console.log('送信先: ' + selectedConfig.slackChannel);
     
-    var sendResult = sendSlack(tickets, selectedConfig);
+    // フィルタリングを適用した送信関数を使用
+    sendSlackToMunicipality(tickets, selectedConfig, true);
     
-    // 送信結果の処理（成功の場合はコンソールログのみ、エラーの場合のみダイアログ表示）
-    if (sendResult && sendResult.success) {
-      console.log('✅ 送信完了: 「' + selectedConfig.name + '」のopenチケット ' + tickets.length + '件を送信しました');
-      console.log('送信先: ' + selectedConfig.slackChannel);
-    } else {
-      // 送信失敗の場合のみダイアログを表示
-      var ui = SpreadsheetApp.getUi();
-      var errorMessage = '「' + selectedConfig.name + '」のSlack通知送信に失敗しました。\n\n';
-      errorMessage += '送信先: ' + selectedConfig.slackChannel + '\n';
-      
-      if (sendResult && sendResult.error) {
-        errorMessage += 'エラー詳細: ' + sendResult.error + '\n';
-        if (sendResult.errorResponse) {
-          errorMessage += 'Slack APIレスポンス: ' + JSON.stringify(sendResult.errorResponse) + '\n';
-        }
-      }
-      
-      errorMessage += '\n対処方法:\n';
-      errorMessage += '1) ボットがチャンネルに招待されているか確認\n';
-      errorMessage += '2) チャンネル名が正確か確認\n';
-      errorMessage += '3) Bot Tokenが有効か確認';
-      
-      ui.alert('送信失敗', errorMessage, ui.ButtonSet.OK);
-      
-      console.error('=== Slack送信失敗詳細 ===');
-      console.error('自治体: ' + selectedConfig.name);
-      console.error('送信先: ' + selectedConfig.slackChannel);
-      if (sendResult) {
-        console.error('エラー: ' + (sendResult.error || '不明'));
-        console.error('レスポンス: ' + JSON.stringify(sendResult.errorResponse || {}));
-      }
-    }
+    // 送信完了メッセージをコンソールに出力
+    // 送信完了メッセージをコンソールに出力
+    console.log('✅ フィルタリング付き送信完了: 「' + selectedConfig.name + '」のopenチケットを送信しました');
+    console.log('送信先: ' + selectedConfig.slackChannel);
     
   } catch (error) {
     console.error('自治体選択処理エラー: ' + error.toString());
