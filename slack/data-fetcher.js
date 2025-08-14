@@ -64,29 +64,6 @@ function getTicketsFromSheet(messageBoxId) {
 }
 
 /**
- * ID文字列をパースして配列に変換
- * @param {string} idsString カンマ区切りのID文字列
- * @return {Array} ID配列
- */
-function parseIds(idsString) {
-  if (!idsString || idsString === '') {
-    return [];
-  }
-  
-  try {
-    // カンマ区切りの文字列を配列に変換
-    return idsString.toString().split(',').map(function(id) {
-      return parseInt(id.trim());
-    }).filter(function(id) {
-      return !isNaN(id);
-    });
-  } catch (error) {
-    console.error('ID解析エラー: ' + error.toString());
-    return [];
-  }
-}
-
-/**
  * 指定受信箱IDのチケット分類マップを取得
  * @param {string} messageBoxId 受信箱ID
  * @return {Object} チケット分類マップ（ID → 名前）
