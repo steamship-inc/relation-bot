@@ -45,9 +45,9 @@ function getTicketsFromSheet(messageBoxId) {
         var caseCategoryIdsStr = row[8] && row[8].toString().trim() ? row[8].toString() : '';
         var labelIdsStr = row[9] && row[9].toString().trim() ? row[9].toString() : '';
         
-        // IDを配列に変換
-        var caseCategoryIds = caseCategoryIdsStr ? caseCategoryIdsStr.split(', ').filter(function(id) { return id; }) : [];
-        var labelIds = labelIdsStr ? labelIdsStr.split(', ').filter(function(id) { return id; }) : [];
+        // IDを配列に変換（数値型に変換）
+        var caseCategoryIds = caseCategoryIdsStr ? caseCategoryIdsStr.split(', ').filter(function(id) { return id; }).map(function(id) { return parseInt(id, 10); }) : [];
+        var labelIds = labelIdsStr ? labelIdsStr.split(', ').filter(function(id) { return id; }).map(function(id) { return parseInt(id, 10); }) : [];
         
         // IDを名前に変換
         var caseCategoryNames = getCategoryNames(caseCategoryIds, caseCategoriesMap);
