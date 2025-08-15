@@ -245,6 +245,276 @@ function checkCronSchedule(cronSchedule, currentHour, currentMinute, currentDay,
 }
 
 /**
+ * 定期通知トリガー管理
+ * 本番用・検証用・削除を選択できる統合メニュー
+ */
+function manageScheduledNotificationTrigger() {
+  var ui = SpreadsheetApp.getUi();
+  
+  // 現在のトリガー状態を確認
+  var currentStatus = getCurrentTriggerStatus();
+  
+  // HTMLダイアログを作成
+  var htmlOutput = HtmlService.createHtmlOutput(`
+    <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
+      <h3>定期通知トリガー管理</h3>
+      <p style="margin-bottom: 20px;"><strong>現在の状態:</strong> ${currentStatus}</p>
+      
+      <p style="margin-bottom: 30px;">
+        トリガー設定を選択してください：<br><br>
+        <strong>注意:</strong> 既存のトリガーは自動的に削除されます
+      </p>
+      
+      <div style="margin: 20px 0;">
+        <button onclick="setProduction()" style="
+          background-color: #4CAF50; 
+          color: white; 
+          padding: 15px 25px; 
+          margin: 5px; 
+          border: none; 
+          border-radius: 5px; 
+          cursor: pointer;
+          font-size: 14px;
+          min-width: 150px;
+        ">🟢 本番設定<br><small>(1時間ごと)</small></button>
+      </div>
+      
+      <div style="margin: 20px 0;">
+        <button onclick="setTest()" style="
+          background-color: #FF9800; 
+          color: white; 
+          padding: 15px 25px; 
+          margin: 5px; 
+          border: none; 
+          border-radius: 5px; 
+          cursor: pointer;
+          font-size: 14px;
+          min-width: 150px;
+        ">🔶 検証設定<br><small>(1分ごと)</small></button>
+      </div>
+      
+      <div style="margin: 20px 0;">
+        <button onclick="deleteTrigger()" style="
+          background-color: #f44336; 
+          color: white; 
+          padding: 15px 25px; 
+          margin: 5px; 
+          border: none; 
+          border-radius: 5px; 
+          cursor: pointer;
+          font-size: 14px;
+          min-width: 150px;
+        ">🗑️ 削除<br><small>(通知停止)</small></button>
+      </div>
+      
+      <div style="margin-top: 30px;">
+        <button onclick="google.script.host.close()" style="
+          background-color: #9E9E9E; 
+          color: white; 
+          padding: 10px 20px; 
+          border: none; 
+          border-radius: 5px; 
+          cursor: pointer;
+        ">キャンセル</button>
+      </div>
+    </div>
+    
+    <script>
+      function setProduction() {
+        google.script.run
+          .withSuccessHandler(() => {
+            google.script.host.close();
+          })
+          .withFailureHandler((error) => {
+            alert('エラーが発生しました: ' + error.message);
+          })
+          .setupProductionTrigger();
+      }
+      
+      function setTest() {
+        google.script.run
+          .withSuccessHandler(() => {
+            google.script.host.close();
+          })
+          .withFailureHandler((error) => {
+            alert('エラーが発生しました: ' + error.message);
+          })
+          .setupTestTrigger();
+      }
+      
+      function deleteTrigger() {
+        google.script.run
+          .withSuccessHandler(() => {
+            google.script.host.close();
+          })
+          .withFailureHandler((error) => {
+            alert('エラーが発生しました: ' + error.message);
+          })
+          .removeScheduledNotificationTrigger();
+      }
+    </script>
+  `)
+  .setWidth(400)
+  .setHeight(450);
+
+  ui.showModalDialog(htmlOutput, '定期通知トリガー管理');
+}
+
+/**
+ * 現在のトリガー状態を取得
+ */
+function getCurrentTriggerStatus() {
+  var triggers = ScriptApp.getProjectTriggers();
+  
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'executeScheduledNotifications') {
+      var trigger = triggers[i];
+      
+      if (trigger.getEventType() === ScriptApp.EventType.CLOCK) {
+        // 時間ベースのトリガーの詳細を判定
+        // GASでは直接間隔を取得できないため、作成時刻から推測
+        return '🟢 設定済み（詳細は手動確認が必要）';
+      }
+    }
+  }
+  
+  return '❌ 未設定';
+}
+
+/**
+ * 本番用トリガーを設定（1時間ごと）
+ */
+function setupProductionTrigger() {
+  try {
+    // 既存のトリガーを全て削除
+    var deletedCount = removeExistingTriggers();
+    
+    // 新しいトリガーを作成（1時間ごと）
+    ScriptApp.newTrigger('executeScheduledNotifications')
+      .timeBased()
+      .everyHours(1)
+      .create();
+    
+    console.log('本番用トリガーを設定しました（1時間ごと）');
+    
+    var ui = SpreadsheetApp.getUi();
+    var message = '本番用トリガー設定完了\n\n' +
+      '🟢 実行間隔: 1時間ごと（本番環境）\n' +
+      '📋 対象関数: executeScheduledNotifications\n';
+    
+    if (deletedCount > 0) {
+      message += '\n🗑️ 既存トリガー削除: ' + deletedCount + '件\n';
+    }
+    
+    message += '\n📮受信箱シートの「定期通知設定」列でスケジュールを設定してください。';
+    
+    ui.alert('設定完了', message, ui.ButtonSet.OK);
+      
+  } catch (error) {
+    console.error('本番用トリガー設定エラー: ' + error.toString());
+    showTriggerError('本番用トリガー設定', error);
+  }
+}
+
+/**
+ * 検証用トリガーを設定（1分ごと）
+ */
+function setupTestTrigger() {
+  try {
+    // 既存のトリガーを全て削除
+    var deletedCount = removeExistingTriggers();
+    
+    // 新しいトリガーを作成（1分ごと）
+    ScriptApp.newTrigger('executeScheduledNotifications')
+      .timeBased()
+      .everyMinutes(1)
+      .create();
+    
+    console.log('検証用トリガーを設定しました（1分ごと）');
+    
+    var ui = SpreadsheetApp.getUi();
+    var message = '検証用トリガー設定完了\n\n' +
+      '🔶 実行間隔: 1分ごと（検証環境）\n' +
+      '📋 対象関数: executeScheduledNotifications\n';
+    
+    if (deletedCount > 0) {
+      message += '\n🗑️ 既存トリガー削除: ' + deletedCount + '件\n';
+    }
+    
+    message += '\n⚠️ 注意: 検証用設定です。実際のSlack通知が頻繁に送信されます。\n' +
+               'テスト完了後は本番設定または削除を実行してください。';
+    
+    ui.alert('設定完了', message, ui.ButtonSet.OK);
+      
+  } catch (error) {
+    console.error('検証用トリガー設定エラー: ' + error.toString());
+    showTriggerError('検証用トリガー設定', error);
+  }
+}
+
+/**
+ * 既存のトリガーを削除（内部関数）
+ * @return {number} 削除されたトリガー数
+ */
+function removeExistingTriggers() {
+  var triggers = ScriptApp.getProjectTriggers();
+  var deletedCount = 0;
+  
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'executeScheduledNotifications') {
+      ScriptApp.deleteTrigger(triggers[i]);
+      deletedCount++;
+    }
+  }
+  
+  if (deletedCount > 0) {
+    console.log('既存のトリガーを削除しました（' + deletedCount + '件）');
+  }
+  
+  return deletedCount;
+}
+
+/**
+ * エラー表示用ヘルパー関数
+ */
+function showTriggerError(operation, error) {
+  var ui = SpreadsheetApp.getUi();
+  ui.alert('エラー', 
+    operation + '中にエラーが発生しました：\n\n' + 
+    error.toString(),
+    ui.ButtonSet.OK);
+}
+
+/**
+ * 定期通知トリガーを削除
+ */
+function removeScheduledNotificationTrigger() {
+  try {
+    var deletedCount = removeExistingTriggers();
+    
+    console.log('定期通知トリガーを削除しました（' + deletedCount + '件）');
+    
+    var ui = SpreadsheetApp.getUi();
+    if (deletedCount > 0) {
+      ui.alert('トリガー削除完了', 
+        '定期通知トリガーを削除しました。\n\n' +
+        '🗑️ 削除件数: ' + deletedCount + '件\n\n' +
+        '定期通知は停止されました。',
+        ui.ButtonSet.OK);
+    } else {
+      ui.alert('削除対象なし', 
+        '削除対象のトリガーが見つかりませんでした。\n\n' +
+        'executeScheduledNotifications 関数のトリガーは設定されていません。',
+        ui.ButtonSet.OK);
+    }
+      
+  } catch (error) {
+    console.error('トリガー削除エラー: ' + error.toString());
+    showTriggerError('トリガー削除', error);
+  }
+}
+
+/**
  * 定期通知のテスト実行
  * 手動でスケジューラーを実行してテスト
  */
