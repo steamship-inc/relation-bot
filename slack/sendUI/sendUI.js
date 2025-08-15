@@ -34,10 +34,10 @@ function selectMunicipalityWithSearchableDialog(configs) {
     htmlTemplate.municipalityItemsHtml = municipalityItemsHtml;
     
     var htmlOutput = htmlTemplate.evaluate()
-      .setWidth(600)
-      .setHeight(500);
+      .setWidth(700)
+      .setHeight(600);
     
-    SpreadsheetApp.getUi().showModalDialog(htmlOutput, '自治体選択');
+    SpreadsheetApp.getUi().showModalDialog(htmlOutput, '受信箱選択');
     
     console.log('ダイアログ表示完了');
     
