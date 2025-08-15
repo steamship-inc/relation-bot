@@ -186,46 +186,56 @@ sequenceDiagram
     Modal->>Modal: チケット詳細表示
 ```
 
-### 6. 定期通知スケジューラー
+### 6. 定期実行のSlack通知（スケジューラー）
 ```mermaid
 sequenceDiagram
-    participant Scheduler as scheduler.js
-    participant DataFetcher as data-fetcher.js
-    participant Notifications as notifications.js
+    participant Trigger as 時間トリガー
+    participant Scheduler as slack/scheduler.js
+    participant DataFetcher as slack/data-fetcher.js
+    participant Notifications as slack/notifications.js
+    participant MessageBuilder as slack/message-builder.js
     participant Sheet as 📮受信箱シート
     participant TicketSheet as 🎫未対応チケットシート
     participant Slack as Slack API
     
     %% 定期実行開始
-    Scheduler->>Scheduler: executeScheduledNotifications()
-    Scheduler->>Scheduler: 現在の日時情報を取得
+    Trigger->>Scheduler: 1時間ごとに実行<br/>executeScheduledNotifications()
+    Scheduler->>Scheduler: 現在の日時情報を取得<br/>（時刻・曜日・日付）
     
     %% 自治体設定取得
     Scheduler->>Sheet: loadMunicipalityConfigsFromSheet()
     Sheet-->>Scheduler: 自治体設定配列（定期通知設定含む）
     
     loop 各自治体
-        Scheduler->>Scheduler: checkCronSchedule()
-        Note over Scheduler: cron設定と現在時刻を比較<br/>例: "9:00 daily"<br/>"14:30 weekdays"
+        Scheduler->>Scheduler: checkCronSchedule(cronSchedule, currentHour, ...)
+        Note over Scheduler: cron設定と現在時刻を比較<br/>例: "9:00 daily"<br/>"14:30 weekdays"<br/>"10:00 mon,wed,fri"
         
         alt 実行条件一致
             Scheduler->>DataFetcher: getTicketsFromSheet(messageBoxId)
-            DataFetcher->>TicketSheet: 該当自治体チケット取得
+            DataFetcher->>TicketSheet: 該当自治体チケット取得<br/>(A列:受信箱ID一致で検索)
             TicketSheet-->>DataFetcher: チケットデータ
             DataFetcher-->>Scheduler: チケット配列
             
             alt チケット存在
                 Scheduler->>Notifications: sendSlackToMunicipality(tickets, config, isLast)
-                Notifications->>Notifications: applySlackNotificationFilter()
-                Notifications->>Notifications: createSlackMessage()
-                Notifications->>Slack: POST chat.postMessage<br/>(Bot Token使用)
-                Slack-->>Notifications: 送信結果
-                Notifications-->>Scheduler: 完了通知
+                Notifications->>Notifications: applySlackNotificationFilter(tickets, config)
+                Note over Notifications: フィルタ条件適用<br/>- include_label_ids<br/>- include_case_category_ids<br/>- priority_levels
+                
+                alt フィルタ条件該当チケットあり
+                    Notifications->>MessageBuilder: createSlackMessage(filteredTickets, config)
+                    MessageBuilder->>MessageBuilder: テンプレート適用・URL生成
+                    MessageBuilder-->>Notifications: フォーマット済みメッセージ
+                    Notifications->>Slack: POST chat.postMessage<br/>(Bot Token使用)
+                    Slack-->>Notifications: 送信結果
+                    Notifications-->>Scheduler: 完了通知
+                else フィルタ条件該当なし
+                    Notifications-->>Scheduler: 送信スキップ通知
+                end
             end
         end
     end
     
-    Scheduler->>Scheduler: 処理完了・ログ出力
+    Scheduler->>Scheduler: 処理完了・ログ出力（実行時間・送信数）
 ```
 
 ### 7. Slackフィルタ設定
@@ -339,6 +349,55 @@ sequenceDiagram
         alt 50自治体バッチ完了
             FT->>FT: Utilities.sleep(60000)<br/>(API制限回避)
         end
+    end
+```
+
+### 10. 定期通知トリガー管理
+```mermaid
+sequenceDiagram
+    participant User as ユーザー
+    participant UI as スプレッドシートUI
+    participant Scheduler as slack/scheduler.js
+    participant Dialog as HTMLダイアログ
+    participant GAS as Google Apps Script
+    
+    %% トリガー管理画面の表示
+    User->>UI: ⚙️ 定期通知トリガー管理 選択
+    UI->>Scheduler: manageScheduledNotificationTrigger()
+    Scheduler->>Scheduler: getCurrentTriggerStatus()
+    Scheduler->>GAS: ScriptApp.getProjectTriggers()
+    GAS-->>Scheduler: 現在のトリガー情報
+    Scheduler->>Dialog: HTMLダイアログ表示
+    Dialog-->>User: トリガー管理画面表示
+    
+    %% 本番用トリガー設定
+    alt 本番用設定選択
+        User->>Dialog: 🟢 本番設定 クリック
+        Dialog->>Scheduler: setupProductionTrigger()
+        Scheduler->>GAS: 既存トリガー削除
+        Scheduler->>GAS: 1時間ごとのトリガー作成
+        GAS-->>Scheduler: トリガー作成完了
+        Scheduler-->>Dialog: 設定完了応答
+        Dialog-->>User: 完了メッセージ表示
+    
+    %% 検証用トリガー設定
+    else 検証用設定選択
+        User->>Dialog: 🔶 検証設定 クリック
+        Dialog->>Scheduler: setupTestTrigger()
+        Scheduler->>GAS: 既存トリガー削除
+        Scheduler->>GAS: 1分ごとのトリガー作成
+        GAS-->>Scheduler: トリガー作成完了
+        Scheduler-->>Dialog: 設定完了応答
+        Dialog-->>User: 完了メッセージ表示
+    
+    %% トリガー削除
+    else トリガー削除選択
+        User->>Dialog: 🗑️ 削除 クリック
+        Dialog->>Scheduler: removeScheduledNotificationTrigger()
+        Scheduler->>GAS: 既存トリガー削除
+        GAS-->>Scheduler: 削除完了
+        Scheduler-->>Dialog: 削除完了応答
+        Dialog-->>User: 完了メッセージ表示
     end
 ```
 
