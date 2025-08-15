@@ -22,6 +22,8 @@ function onOpen() {
     .addSeparator()
     .addItem('🔧 Slackフィルタ設定', 'showFilterConfigDialog')
     .addSeparator()
+    .addItem('🧪 定期通知テスト実行', 'testScheduledNotifications')
+    .addSeparator()
     .addToUi();
 
  ui.createMenu('🔍 tool')
