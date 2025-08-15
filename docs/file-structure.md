@@ -1,5 +1,15 @@
 # ファイル構成と関数構成
 
+## 目次
+- [config.js（グローバル設定管理）](#configjsグローバル設定管理)
+- [municipality_config.js（自治体設定管理）](#municipality_configjs自治体設定管理)
+- [fetchTickets.js（チケット取得・Slack通知統合）](#fetchticketsjs-チケット取得slack通知統合)
+- [slack_notification.js（Slack通知専用）](#slack_notificationjsslack通知専用)
+- [fetchMessageBoxes.js（メッセージボックス取得）](#fetchmessageboxesjs-メッセージボックス取得)
+- [fetchCaseCategories.js（チケット分類取得）](#fetchcasecategoriesjsチケット分類取得)
+- [fetchLabels.js（ラベル取得）](#fetchlabelsjsラベル取得)
+- [menu.js（メニュー構成）](#menujsメニュー構成)
+
 ## config.js（グローバル設定管理）
 ```
 config.js
