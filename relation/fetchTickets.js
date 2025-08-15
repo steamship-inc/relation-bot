@@ -214,9 +214,7 @@ function fetchOpenTickets() {
   console.log('全処理完了: ' + successCount + '/' + totalMunicipalities + ' 自治体');
   
   // 結果表示をD1セルに出力
-  var resultMessage = '全自治体チケット取得完了\n'
-    + '成功: ' + successCount + '件の自治体\n'
-    + '取得チケット総数: ' + totalTickets + '件\n';
+  var resultMessage = '取得チケット総数: ' + totalTickets + '件';
   if (errorList.length > 0) {
     resultMessage += 'エラー: ' + errorList.length + '件\n' + errorList.join('\n');
   }

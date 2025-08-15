@@ -146,9 +146,7 @@ function fetchLabels() {
   console.log('全処理完了: ' + successCount + '/' + totalMunicipalities + ' 自治体');
   
   // 結果表示
-  var resultMessage = '全自治体ラベル取得完了\n\n';
-  resultMessage += '成功: ' + successCount + '件の自治体\n';
-  resultMessage += '取得ラベル総数: ' + totalLabels + '件\n';
+  var resultMessage = '取得ラベル総数: ' + totalLabels + '件';
   if (errorList.length > 0) {
     resultMessage += 'エラー: ' + errorList.length + '件\n\n';
     resultMessage += errorList.join('\n');
