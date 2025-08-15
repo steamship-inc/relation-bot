@@ -41,7 +41,8 @@ function fetchMessageBoxes() {
       '受信箱ID',
       'Slackチャンネル',
       'Slack通知テンプレート(JSON)',
-      'Slack通知フィルタ(JSON)'
+      'Slack通知フィルタ(JSON)',
+      '定期通知設定'
     ];
     configSheet.getRange(5, 1, 1, headers.length).setValues([headers]);
     
@@ -72,12 +73,31 @@ function fetchMessageBoxes() {
     configSheet.setColumnWidth(5, 150); // Slackチャンネル
     configSheet.setColumnWidth(6, 500); // Slack通知テンプレートJSON
     configSheet.setColumnWidth(7, 400); // Slack通知フィルタJSON
+    configSheet.setColumnWidth(8, 200); // 定期通知設定
     
     // ヘッダー行の書式設定
     var headerRange = configSheet.getRange(5, 1, 1, headers.length);
     headerRange.setBackground('#4285f4');
     headerRange.setFontColor('white');
     headerRange.setFontWeight('bold');
+    
+    // 定期通知設定列（H列）にコメントを追加
+    var scheduleHeaderCell = configSheet.getRange(5, 8);
+    scheduleHeaderCell.setNote(
+      '定期通知設定の例:\n\n' +
+      '• 9:00 daily → 毎日9時\n' +
+      '• 14:30 weekdays → 平日14時30分\n' +
+      '• 10:00 weekends → 週末10時\n' +
+      '• 8:00 mon,wed,fri → 月水金8時\n' +
+      '• 15:00 monthly → 毎月1日15時\n\n' +
+      '頻度指定:\n' +
+      '• daily: 毎日\n' +
+      '• weekdays: 平日（月-金）\n' +
+      '• weekends: 週末（土日）\n' +
+      '• monthly: 毎月1日\n' +
+      '• mon,tue,wed,thu,fri,sat,sun: 特定曜日\n\n' +
+      '空白の場合は通知されません'
+    );
     
     console.log('📮受信箱シートを初期化しました');
   }
@@ -105,9 +125,28 @@ function fetchMessageBoxes() {
       '受信箱ID',
       'Slackチャンネル',
       'Slack通知テンプレート(JSON)',
-      'Slack通知フィルタ(JSON)'
+      'Slack通知フィルタ(JSON)',
+      '定期通知設定'
     ];
     configSheet.getRange(5, 1, 1, correctHeaders.length).setValues([correctHeaders]);
+    
+    // 定期通知設定列（H列）にコメントを追加
+    var scheduleHeaderCell = configSheet.getRange(5, 8);
+    scheduleHeaderCell.setNote(
+      '定期通知設定の例:\n\n' +
+      '• 9:00 daily → 毎日9時\n' +
+      '• 14:30 weekdays → 平日14時30分\n' +
+      '• 10:00 weekends → 週末10時\n' +
+      '• 8:00 mon,wed,fri → 月水金8時\n' +
+      '• 15:00 monthly → 毎月1日15時\n\n' +
+      '頻度指定:\n' +
+      '• daily: 毎日\n' +
+      '• weekdays: 平日（月-金）\n' +
+      '• weekends: 週末（土日）\n' +
+      '• monthly: 毎月1日\n' +
+      '• mon,tue,wed,thu,fri,sat,sun: 特定曜日\n\n' +
+      '空白の場合は通知されません'
+    );
   }
 
   
@@ -209,15 +248,6 @@ function fetchMessageBoxes() {
 
   // 取得件数をログ出力
   console.log('受信箱シート ' + messageBoxes.length + ' 件を更新しました');
-  
-  // 処理完了をUIで通知
-  var message = 'メッセージボックス一覧取得が完了しました。\n\n' +
-                '- メッセージボックス取得: ' + messageBoxes.length + ' 件\n' +
-                '- 受信箱シートを更新\n' +
-                '- コード表から団体コード・都道府県名を設定';
-  
-  var ui = SpreadsheetApp.getUi();
-  ui.alert('取得完了', message, ui.ButtonSet.OK);
 }
 
 /**
@@ -407,7 +437,8 @@ function getMunicipalityDataFromSheet(defaultSlackTemplate, defaultSlackFilter) 
           row[messageBoxIdIndex],          // 受信箱ID
           slackChannel,                    // Slackチャンネル
           defaultSlackTemplate,            // Slack通知テンプレート
-          defaultSlackFilter               // Slack通知フィルタ
+          defaultSlackFilter,              // Slack通知フィルタ
+          ''                               // 定期通知設定（空白）
         ]);
       }
     }

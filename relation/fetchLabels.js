@@ -146,14 +146,11 @@ function fetchLabels() {
   console.log('全処理完了: ' + successCount + '/' + totalMunicipalities + ' 自治体');
   
   // 結果表示
-  var ui = SpreadsheetApp.getUi();
-  var message = '全自治体ラベル取得完了\n\n';
-  message += '成功: ' + successCount + '件の自治体\n';
-  message += '取得ラベル総数: ' + totalLabels + '件\n';
+  var resultMessage = '取得ラベル総数: ' + totalLabels + '件';
   if (errorList.length > 0) {
-    message += 'エラー: ' + errorList.length + '件\n\n';
-    message += errorList.join('\n');
+    resultMessage += 'エラー: ' + errorList.length + '件\n\n';
+    resultMessage += errorList.join('\n');
   }
-  
-  ui.alert('実行結果', message, ui.ButtonSet.OK);
+
+  sheet.getRange(1, 4).setValue(resultMessage);
 }
