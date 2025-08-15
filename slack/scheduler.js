@@ -258,53 +258,58 @@ function manageScheduledNotificationTrigger() {
   var htmlOutput = HtmlService.createHtmlOutput(`
     <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
       <h3>定期通知トリガー管理</h3>
-      <p style="margin-bottom: 20px;"><strong>現在の状態:</strong> ${currentStatus}</p>
+      <p id="status" style="margin-bottom: 20px;"><strong>現在の状態:</strong> ${currentStatus}</p>
       
-      <p style="margin-bottom: 30px;">
-        トリガー設定を選択してください：<br><br>
-        <strong>注意:</strong> 既存のトリガーは自動的に削除されます
-      </p>
-      
-      <div style="margin: 20px 0;">
-        <button onclick="setProduction()" style="
-          background-color: #4CAF50; 
-          color: white; 
-          padding: 15px 25px; 
-          margin: 5px; 
-          border: none; 
-          border-radius: 5px; 
-          cursor: pointer;
-          font-size: 14px;
-          min-width: 150px;
-        ">🟢 本番設定<br><small>(1時間ごと)</small></button>
+      <div id="buttons" style="margin-bottom: 30px;">
+        <p style="margin-bottom: 30px;">
+          トリガー設定を選択してください：<br><br>
+          <strong>注意:</strong> 既存のトリガーは自動的に削除されます
+        </p>
+        
+        <div style="margin: 20px 0;">
+          <button onclick="setProduction()" style="
+            background-color: #4CAF50; 
+            color: white; 
+            padding: 15px 25px; 
+            margin: 5px; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer;
+            font-size: 14px;
+            min-width: 150px;
+          ">🟢 本番設定<br><small>(1時間ごと)</small></button>
+        </div>
+        
+        <div style="margin: 20px 0;">
+          <button onclick="setTest()" style="
+            background-color: #FF9800; 
+            color: white; 
+            padding: 15px 25px; 
+            margin: 5px; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer;
+            font-size: 14px;
+            min-width: 150px;
+          ">🔶 検証設定<br><small>(1分ごと)</small></button>
+        </div>
+        
+        <div style="margin: 20px 0;">
+          <button onclick="deleteTrigger()" style="
+            background-color: #f44336; 
+            color: white; 
+            padding: 15px 25px; 
+            margin: 5px; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer;
+            font-size: 14px;
+            min-width: 150px;
+          ">🗑️ 削除<br><small>(通知停止)</small></button>
+        </div>
       </div>
       
-      <div style="margin: 20px 0;">
-        <button onclick="setTest()" style="
-          background-color: #FF9800; 
-          color: white; 
-          padding: 15px 25px; 
-          margin: 5px; 
-          border: none; 
-          border-radius: 5px; 
-          cursor: pointer;
-          font-size: 14px;
-          min-width: 150px;
-        ">🔶 検証設定<br><small>(1分ごと)</small></button>
-      </div>
-      
-      <div style="margin: 20px 0;">
-        <button onclick="deleteTrigger()" style="
-          background-color: #f44336; 
-          color: white; 
-          padding: 15px 25px; 
-          margin: 5px; 
-          border: none; 
-          border-radius: 5px; 
-          cursor: pointer;
-          font-size: 14px;
-          min-width: 150px;
-        ">🗑️ 削除<br><small>(通知停止)</small></button>
+      <div id="message" style="display: none; margin: 20px 0; padding: 15px; background-color: #e8f5e8; border-radius: 5px; color: #2e7d32;">
       </div>
       
       <div style="margin-top: 30px;">
@@ -315,47 +320,82 @@ function manageScheduledNotificationTrigger() {
           border: none; 
           border-radius: 5px; 
           cursor: pointer;
-        ">キャンセル</button>
+        ">閉じる</button>
       </div>
     </div>
     
     <script>
       function setProduction() {
+        showLoading();
         google.script.run
-          .withSuccessHandler(() => {
-            google.script.host.close();
+          .withSuccessHandler((result) => {
+            updateStatus('🟢 本番用(1時間ごと)');
+            showMessage('本番用(1時間ごと)を設定しました。');
           })
           .withFailureHandler((error) => {
-            alert('エラーが発生しました: ' + error.message);
+            showMessage('エラーが発生しました: ' + error.message, true);
           })
           .setupProductionTrigger();
       }
       
       function setTest() {
+        showLoading();
         google.script.run
-          .withSuccessHandler(() => {
-            google.script.host.close();
+          .withSuccessHandler((result) => {
+            updateStatus('🔶 検証用(1分ごと)');
+            showMessage('検証用(1分ごと)を設定しました。');
           })
           .withFailureHandler((error) => {
-            alert('エラーが発生しました: ' + error.message);
+            showMessage('エラーが発生しました: ' + error.message, true);
           })
           .setupTestTrigger();
       }
       
       function deleteTrigger() {
+        showLoading();
         google.script.run
-          .withSuccessHandler(() => {
-            google.script.host.close();
+          .withSuccessHandler((result) => {
+            updateStatus('❌ 未設定');
+            showMessage('定期通知を削除しました。');
           })
           .withFailureHandler((error) => {
-            alert('エラーが発生しました: ' + error.message);
+            showMessage('エラーが発生しました: ' + error.message, true);
           })
           .removeScheduledNotificationTrigger();
+      }
+      
+      function updateStatus(newStatus) {
+        document.getElementById('status').innerHTML = '<strong>現在の状態:</strong> ' + newStatus;
+      }
+      
+      function showMessage(text, isError) {
+        var messageDiv = document.getElementById('message');
+        messageDiv.innerHTML = text;
+        messageDiv.style.display = 'block';
+        
+        if (isError) {
+          messageDiv.style.backgroundColor = '#ffebee';
+          messageDiv.style.color = '#c62828';
+        } else {
+          messageDiv.style.backgroundColor = '#e8f5e8';
+          messageDiv.style.color = '#2e7d32';
+        }
+        
+        hideLoading();
+      }
+      
+      function showLoading() {
+        var buttons = document.getElementById('buttons');
+        buttons.innerHTML = '<p style="color: #666;">設定中...</p>';
+      }
+      
+      function hideLoading() {
+        // ボタンは非表示のまま（設定完了後は閉じるボタンのみ表示）
       }
     </script>
   `)
   .setWidth(400)
-  .setHeight(450);
+  .setHeight(500);
 
   ui.showModalDialog(htmlOutput, '定期通知トリガー管理');
 }
@@ -371,9 +411,20 @@ function getCurrentTriggerStatus() {
       var trigger = triggers[i];
       
       if (trigger.getEventType() === ScriptApp.EventType.CLOCK) {
-        // 時間ベースのトリガーの詳細を判定
-        // GASでは直接間隔を取得できないため、作成時刻から推測
-        return '🟢 設定済み（詳細は手動確認が必要）';
+        // トリガーの作成時間から推測（完璧ではないが、実用的）
+        var now = new Date();
+        var triggerTime = trigger.getUniqueId(); // 作成順で推測
+        
+        // プロパティサービスで設定タイプを記録・取得
+        var triggerType = PropertiesService.getScriptProperties().getProperty('triggerType');
+        
+        if (triggerType === 'production') {
+          return '🟢 本番用(1時間ごと)';
+        } else if (triggerType === 'test') {
+          return '🔶 検証用(1分ごと)';
+        } else {
+          return '🟢 設定済み（種類不明）';
+        }
       }
     }
   }
@@ -395,24 +446,15 @@ function setupProductionTrigger() {
       .everyHours(1)
       .create();
     
+    // 設定タイプを記録
+    PropertiesService.getScriptProperties().setProperty('triggerType', 'production');
+    
     console.log('本番用トリガーを設定しました（1時間ごと）');
-    
-    var ui = SpreadsheetApp.getUi();
-    var message = '本番用トリガー設定完了\n\n' +
-      '🟢 実行間隔: 1時間ごと（本番環境）\n' +
-      '📋 対象関数: executeScheduledNotifications\n';
-    
-    if (deletedCount > 0) {
-      message += '\n🗑️ 既存トリガー削除: ' + deletedCount + '件\n';
-    }
-    
-    message += '\n📮受信箱シートの「定期通知設定」列でスケジュールを設定してください。';
-    
-    ui.alert('設定完了', message, ui.ButtonSet.OK);
+    return { success: true, type: 'production' };
       
   } catch (error) {
     console.error('本番用トリガー設定エラー: ' + error.toString());
-    showTriggerError('本番用トリガー設定', error);
+    throw error;
   }
 }
 
@@ -430,25 +472,15 @@ function setupTestTrigger() {
       .everyMinutes(1)
       .create();
     
+    // 設定タイプを記録
+    PropertiesService.getScriptProperties().setProperty('triggerType', 'test');
+    
     console.log('検証用トリガーを設定しました（1分ごと）');
-    
-    var ui = SpreadsheetApp.getUi();
-    var message = '検証用トリガー設定完了\n\n' +
-      '🔶 実行間隔: 1分ごと（検証環境）\n' +
-      '📋 対象関数: executeScheduledNotifications\n';
-    
-    if (deletedCount > 0) {
-      message += '\n🗑️ 既存トリガー削除: ' + deletedCount + '件\n';
-    }
-    
-    message += '\n⚠️ 注意: 検証用設定です。実際のSlack通知が頻繁に送信されます。\n' +
-               'テスト完了後は本番設定または削除を実行してください。';
-    
-    ui.alert('設定完了', message, ui.ButtonSet.OK);
+    return { success: true, type: 'test' };
       
   } catch (error) {
     console.error('検証用トリガー設定エラー: ' + error.toString());
-    showTriggerError('検証用トリガー設定', error);
+    throw error;
   }
 }
 
@@ -492,60 +524,15 @@ function removeScheduledNotificationTrigger() {
   try {
     var deletedCount = removeExistingTriggers();
     
-    console.log('定期通知トリガーを削除しました（' + deletedCount + '件）');
+    // 設定タイプをクリア
+    PropertiesService.getScriptProperties().deleteProperty('triggerType');
     
-    var ui = SpreadsheetApp.getUi();
-    if (deletedCount > 0) {
-      ui.alert('トリガー削除完了', 
-        '定期通知トリガーを削除しました。\n\n' +
-        '🗑️ 削除件数: ' + deletedCount + '件\n\n' +
-        '定期通知は停止されました。',
-        ui.ButtonSet.OK);
-    } else {
-      ui.alert('削除対象なし', 
-        '削除対象のトリガーが見つかりませんでした。\n\n' +
-        'executeScheduledNotifications 関数のトリガーは設定されていません。',
-        ui.ButtonSet.OK);
-    }
+    console.log('定期通知トリガーを削除しました（' + deletedCount + '件）');
+    return { success: true, deletedCount: deletedCount };
       
   } catch (error) {
     console.error('トリガー削除エラー: ' + error.toString());
-    showTriggerError('トリガー削除', error);
+    throw error;
   }
 }
 
-/**
- * 定期通知のテスト実行
- * 手動でスケジューラーを実行してテスト
- */
-function testScheduledNotifications() {
-  var ui = SpreadsheetApp.getUi();
-  
-  var response = ui.alert('定期通知テスト実行', 
-    'スケジューラーをテスト実行します。\n\n' +
-    '注意: 実際にSlack通知が送信される可能性があります。\n' +
-    '実行しますか？',
-    ui.ButtonSet.YES_NO);
- 
-  if (response !== ui.Button.YES) {
-    return;
-  }
-  
-  try {
-    console.log('=== 定期通知テスト実行開始 ===');
-    executeScheduledNotifications();
-    console.log('=== 定期通知テスト実行完了 ===');
-    
-    ui.alert('テスト完了', 
-      '定期通知のテスト実行が完了しました。\n\n' +
-      'ログを確認して結果をご確認ください。',
-      ui.ButtonSet.OK);
-      
-  } catch (error) {
-    console.error('定期通知テスト実行エラー: ' + error.toString());
-    ui.alert('エラー', 
-      '定期通知テスト実行中にエラーが発生しました：\n\n' + 
-      error.toString(),
-      ui.ButtonSet.OK);
-  }
-}
