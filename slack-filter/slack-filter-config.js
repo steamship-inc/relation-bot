@@ -41,6 +41,7 @@ function showMunicipalitySelectionDialog(configs) {
             margin: 0 auto;
             background: white;
             padding: 30px;
+            padding-bottom: 100px;
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
           }
@@ -98,8 +99,15 @@ function showMunicipalitySelectionDialog(configs) {
             margin-top: 4px;
           }
           .button-group {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid #ddd;
+            padding: 15px;
             text-align: center;
-            margin-top: 30px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
           }
           button {
             margin: 0 10px;
@@ -228,6 +236,11 @@ function showMunicipalitySelectionDialog(configs) {
               return;
             }
             
+            // ボタンを無効化して重複クリック防止
+            var selectButton = document.getElementById('selectButton');
+            selectButton.disabled = true;
+            selectButton.textContent = '🔄 設定画面を準備中...';
+            
             // サーバーサイド関数を呼び出してフィルタ設定画面を表示
             google.script.run
               .withSuccessHandler(function() {
@@ -235,6 +248,8 @@ function showMunicipalitySelectionDialog(configs) {
               })
               .withFailureHandler(function(error) {
                 alert('エラー: ' + error.toString());
+                selectButton.disabled = false;
+                selectButton.textContent = '✅ この自治体で設定する';
               })
               .showFilterConfigForMunicipality(selectedMunicipalityId);
           }
@@ -261,8 +276,8 @@ function showMunicipalitySelectionDialog(configs) {
   
   // HTMLダイアログを表示
   var htmlOutput = htmlTemplate.evaluate()
-    .setWidth(600)
-    .setHeight(500);
+    .setWidth(700)
+    .setHeight(600);
     
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, '自治体選択 - Slackフィルタ設定');
 }
@@ -303,16 +318,24 @@ function showFilterConfigHtmlDialog(messageBoxId, config) {
       <head>
         <base target="_top">
         <style>
-          body { font-family: Arial, sans-serif; margin: 20px; }
+          body { font-family: Arial, sans-serif; margin: 20px; padding-bottom: 100px; }
           .section { margin-bottom: 20px; border: 1px solid #ddd; padding: 15px; border-radius: 5px; }
           .section h3 { margin-top: 0; color: #333; }
           .checkbox-group { max-height: 150px; overflow-y: auto; border: 1px solid #eee; padding: 10px; }
           .checkbox-item { margin: 5px 0; }
-          .button-group { text-align: center; margin-top: 20px; }
+          .button-group { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #ddd; padding: 15px; text-align: center; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
           button { margin: 0 10px; padding: 10px 20px; font-size: 14px; }
           .save-btn { background-color: #4CAF50; color: white; border: none; border-radius: 4px; }
+          .save-btn:disabled { background-color: #cccccc; cursor: not-allowed; }
           .cancel-btn { background-color: #f44336; color: white; border: none; border-radius: 4px; }
           .preview { background-color: #f9f9f9; border: 1px solid #ddd; padding: 10px; margin-top: 10px; font-family: monospace; white-space: pre-wrap; }
+          .notification { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); padding: 15px 25px; border-radius: 8px; font-size: 16px; font-weight: bold; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+          .notification.success { background-color: #4CAF50; color: white; }
+          .notification.error { background-color: #f44336; color: white; }
+          .notification.show { animation: slideDown 0.3s ease-out; }
+          .notification.hide { animation: slideUp 0.3s ease-in; }
+          @keyframes slideDown { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+          @keyframes slideUp { from { opacity: 1; transform: translateX(-50%) translateY(0); } to { opacity: 0; transform: translateX(-50%) translateY(-20px); } }
         </style>
       </head>
       <body>
@@ -321,38 +344,9 @@ function showFilterConfigHtmlDialog(messageBoxId, config) {
         <p><strong>受信箱ID:</strong> <?= messageBoxId ?></p>
         
         <div class="section">
-          <h3>🏷️ ラベルフィルタ</h3>
-          <div>
-            <strong>含むラベル（以下のラベルが付いているチケットのみ通知）:</strong>
-            <div class="checkbox-group" id="includeLabels">
-              <? for (var labelId in labelsMap) { ?>
-                <div class="checkbox-item">
-                  <input type="checkbox" id="include_label_<?= labelId ?>" value="<?= labelId ?>" 
-                         <?= (currentFilter.include_label_ids && currentFilter.include_label_ids.includes(parseInt(labelId))) ? 'checked' : '' ?>>
-                  <label for="include_label_<?= labelId ?>"><?= labelId ?>: <?= labelsMap[labelId] ?></label>
-                </div>
-              <? } ?>
-            </div>
-          </div>
-          
-          <div style="margin-top: 15px;">
-            <strong>除外ラベル（以下のラベルが付いているチケットは通知しない）:</strong>
-            <div class="checkbox-group" id="excludeLabels">
-              <? for (var labelId in labelsMap) { ?>
-                <div class="checkbox-item">
-                  <input type="checkbox" id="exclude_label_<?= labelId ?>" value="<?= labelId ?>"
-                         <?= (currentFilter.exclude_label_ids && currentFilter.exclude_label_ids.includes(parseInt(labelId))) ? 'checked' : '' ?>>
-                  <label for="exclude_label_<?= labelId ?>"><?= labelId ?>: <?= labelsMap[labelId] ?></label>
-                </div>
-              <? } ?>
-            </div>
-          </div>
-        </div>
-        
-        <div class="section">
           <h3>🗂️ チケット分類フィルタ</h3>
           <div>
-            <strong>含む分類（以下の分類のチケットのみ通知）:</strong>
+            <strong>通知対象分類（チェックした分類のチケットのみ通知します）:</strong>
             <div class="checkbox-group" id="includeCategories">
               <? for (var categoryId in categoriesMap) { ?>
                 <div class="checkbox-item">
@@ -363,15 +357,18 @@ function showFilterConfigHtmlDialog(messageBoxId, config) {
               <? } ?>
             </div>
           </div>
-          
-          <div style="margin-top: 15px;">
-            <strong>除外分類（以下の分類のチケットは通知しない）:</strong>
-            <div class="checkbox-group" id="excludeCategories">
-              <? for (var categoryId in categoriesMap) { ?>
+        </div>
+        
+        <div class="section">
+          <h3>🏷️ ラベルフィルタ</h3>
+          <div>
+            <strong>通知対象ラベル（チェックしたラベルのチケットのみ通知します）:</strong>
+            <div class="checkbox-group" id="includeLabels">
+              <? for (var labelId in labelsMap) { ?>
                 <div class="checkbox-item">
-                  <input type="checkbox" id="exclude_category_<?= categoryId ?>" value="<?= categoryId ?>"
-                         <?= (currentFilter.exclude_case_category_ids && currentFilter.exclude_case_category_ids.includes(parseInt(categoryId))) ? 'checked' : '' ?>>
-                  <label for="exclude_category_<?= categoryId ?>"><?= categoryId ?>: <?= categoriesMap[categoryId] ?></label>
+                  <input type="checkbox" id="include_label_<?= labelId ?>" value="<?= labelId ?>" 
+                         <?= (currentFilter.include_label_ids && currentFilter.include_label_ids.includes(parseInt(labelId))) ? 'checked' : '' ?>>
+                  <label for="include_label_<?= labelId ?>"><?= labelId ?>: <?= labelsMap[labelId] ?></label>
                 </div>
               <? } ?>
             </div>
@@ -412,25 +409,7 @@ function showFilterConfigHtmlDialog(messageBoxId, config) {
           function buildConfigFromForm() {
             var config = {};
             
-            // 含むラベル
-            var includeLabels = [];
-            document.querySelectorAll('#includeLabels input:checked').forEach(function(cb) {
-              includeLabels.push(parseInt(cb.value));
-            });
-            if (includeLabels.length > 0) {
-              config.include_label_ids = includeLabels;
-            }
-            
-            // 除外ラベル
-            var excludeLabels = [];
-            document.querySelectorAll('#excludeLabels input:checked').forEach(function(cb) {
-              excludeLabels.push(parseInt(cb.value));
-            });
-            if (excludeLabels.length > 0) {
-              config.exclude_label_ids = excludeLabels;
-            }
-            
-            // 含む分類
+            // 通知対象分類
             var includeCategories = [];
             document.querySelectorAll('#includeCategories input:checked').forEach(function(cb) {
               includeCategories.push(parseInt(cb.value));
@@ -439,29 +418,74 @@ function showFilterConfigHtmlDialog(messageBoxId, config) {
               config.include_case_category_ids = includeCategories;
             }
             
-            // 除外分類
-            var excludeCategories = [];
-            document.querySelectorAll('#excludeCategories input:checked').forEach(function(cb) {
-              excludeCategories.push(parseInt(cb.value));
+            // 通知対象ラベル
+            var includeLabels = [];
+            document.querySelectorAll('#includeLabels input:checked').forEach(function(cb) {
+              includeLabels.push(parseInt(cb.value));
             });
-            if (excludeCategories.length > 0) {
-              config.exclude_case_category_ids = excludeCategories;
+            if (includeLabels.length > 0) {
+              config.include_label_ids = includeLabels;
             }
             
             return config;
           }
           
+          function showNotification(message, type, duration) {
+            duration = duration || 3000;
+            
+            // 既存の通知があれば削除
+            var existingNotification = document.querySelector('.notification');
+            if (existingNotification) {
+              existingNotification.remove();
+            }
+            
+            // 新しい通知を作成
+            var notification = document.createElement('div');
+            notification.className = 'notification ' + type;
+            notification.textContent = message;
+            
+            // ページに追加
+            document.body.appendChild(notification);
+            
+            // アニメーション表示
+            setTimeout(function() {
+              notification.classList.add('show');
+            }, 10);
+            
+            // 自動で非表示
+            setTimeout(function() {
+              notification.classList.add('hide');
+              setTimeout(function() {
+                if (notification.parentNode) {
+                  notification.parentNode.removeChild(notification);
+                }
+              }, 300);
+            }, duration);
+          }
+          
           function saveConfig() {
             var config = buildConfigFromForm();
+            
+            // 保存ボタンを無効化して状態変更
+            var saveButton = document.querySelector('.save-btn');
+            var originalText = saveButton.textContent;
+            saveButton.disabled = true;
+            saveButton.textContent = '🔄 設定を保存中...';
             
             // サーバーサイド関数を呼び出し
             google.script.run
               .withSuccessHandler(function() {
-                alert('フィルタ設定を保存しました');
-                google.script.host.close();
+                saveButton.textContent = '✅ 保存完了';
+                showNotification('✅ フィルタ設定を保存しました', 'success', 2000);
+                setTimeout(function() {
+                  google.script.host.close();
+                }, 2500);
               })
               .withFailureHandler(function(error) {
-                alert('保存エラー: ' + error.toString());
+                // エラー時はボタンを元に戻す
+                saveButton.disabled = false;
+                saveButton.textContent = originalText;
+                showNotification('❌ 保存エラー: ' + error.toString(), 'error', 5000);
               })
               .saveFilterConfig('<?= messageBoxId ?>', config);
           }
@@ -488,8 +512,8 @@ function showFilterConfigHtmlDialog(messageBoxId, config) {
   
   // HTMLダイアログを表示
   var htmlOutput = htmlTemplate.evaluate()
-    .setWidth(800)
-    .setHeight(600);
+    .setWidth(850)
+    .setHeight(700);
     
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Slackフィルタ設定 - ' + config.name);
 }

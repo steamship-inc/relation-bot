@@ -86,11 +86,7 @@ function fetchOpenTickets() {
       
       var tickets = JSON.parse(response.getContentText());
       
-      // チケット分類とラベルの名前を取得
-      var caseCategoriesMap = getCaseCategoriesMap(config.messageBoxId);
-      var labelsMap = getLabelsMap(config.messageBoxId);
-      
-      console.log('自治体: ' + config.name + ', チケット分類数: ' + Object.keys(caseCategoriesMap).length + ', ラベル数: ' + Object.keys(labelsMap).length);
+      console.log('自治体: ' + config.name + ', チケット数: ' + tickets.length);
       
       // デバッグ用：最初のチケットの全プロパティを出力（APIレスポンス確認用）
       if (tickets.length > 0) {
@@ -110,14 +106,6 @@ function fetchOpenTickets() {
           console.log('チケットID: ' + ticket.ticket_id + ', ラベルID: ' + JSON.stringify(labelIds));
         }
         
-        var categoryNames = getCategoryNames(caseCategoryIds, caseCategoriesMap);
-        var labelNames = getLabelNames(labelIds, labelsMap);
-        
-        // デバッグ用ログ：ラベル名の変換結果をログ出力
-        if (labelIds.length > 0) {
-          console.log('ラベルID -> ラベル名変換: ' + JSON.stringify(labelIds) + ' -> ' + JSON.stringify(labelNames));
-        }
-        
         var ticketData = [
           config.messageBoxId,        // 受信箱ID
           config.name,                // 自治体名
@@ -127,8 +115,8 @@ function fetchOpenTickets() {
           ticket.assignee || '',      // 担当者のメンション名
           parseDate(ticket.created_at),          // 作成日（Dateオブジェクト）
           parseDate(ticket.last_updated_at),     // 更新日（Dateオブジェクト）
-          categoryNames.join(', '),   // チケット分類名
-          labelNames.join(', '),      // ラベル名
+          caseCategoryIds.join(', '), // チケット分類ID
+          labelIds.join(', '),        // ラベルID
           ticket.pending_reason_id || '',        // 保留理由ID
           ticket.color_cd || ''       // 色
         ];
@@ -241,17 +229,6 @@ function fetchOpenTickets() {
 
 
 
-
-/**
- * ISO 8601形式の日時を読みやすい形式に変換
- * @param {string} isoString ISO 8601形式の日時文字列
- * @return {string} 読みやすい形式の日時 (yyyy/MM/dd HH:mm)
- */
-function formatDate(isoString) {
-  if (!isoString) return '';
-  var date = new Date(isoString);
-  return Utilities.formatDate(date, 'Asia/Tokyo', 'yyyy/MM/dd HH:mm');
-}
 
 /**
  * ISO 8601形式の日時をDateオブジェクトに変換

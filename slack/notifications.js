@@ -225,28 +225,32 @@ function applySlackNotificationFilter(tickets, config) {
   // 設定シートからSlack通知フィルタ条件を取得
   var filterConditions = config.slackNotificationFilter;
   
+  console.log('=== フィルタ適用デバッグ ===');
+  console.log('自治体: ' + config.name);
+  console.log('フィルタ条件: ' + JSON.stringify(filterConditions));
+  console.log('入力チケット数: ' + tickets.length);
+  
   if (!filterConditions) {
     // フィルタ条件が設定されていない場合は全チケットを対象
+    console.log('フィルタ条件なし - 全チケット対象');
     return tickets;
   }
   
-  return tickets.filter(function(ticket) {
+  var filteredTickets = tickets.filter(function(ticket) {
     var shouldNotify = true;
+    
+    console.log('--- チケット検証 ---');
+    console.log('チケットID: ' + ticket.id);
+    console.log('チケット分類IDs: ' + JSON.stringify(ticket.case_category_ids));
+    console.log('ラベルIDs: ' + JSON.stringify(ticket.label_ids));
     
     // ラベルIDフィルタ（含む）
     if (filterConditions.include_label_ids && filterConditions.include_label_ids.length > 0) {
       var hasIncludeLabel = filterConditions.include_label_ids.some(function(labelId) {
         return ticket.label_ids && ticket.label_ids.includes(labelId);
       });
+      console.log('ラベルフィルタ結果: ' + hasIncludeLabel + ' (必要: ' + JSON.stringify(filterConditions.include_label_ids) + ')');
       if (!hasIncludeLabel) shouldNotify = false;
-    }
-    
-    // ラベルIDフィルタ（除く）
-    if (filterConditions.exclude_label_ids && filterConditions.exclude_label_ids.length > 0) {
-      var hasExcludeLabel = filterConditions.exclude_label_ids.some(function(labelId) {
-        return ticket.label_ids && ticket.label_ids.includes(labelId);
-      });
-      if (hasExcludeLabel) shouldNotify = false;
     }
     
     // チケット分類IDフィルタ（含む）
@@ -254,24 +258,16 @@ function applySlackNotificationFilter(tickets, config) {
       var hasIncludeCategory = filterConditions.include_case_category_ids.some(function(categoryId) {
         return ticket.case_category_ids && ticket.case_category_ids.includes(categoryId);
       });
+      console.log('分類フィルタ結果: ' + hasIncludeCategory + ' (必要: ' + JSON.stringify(filterConditions.include_case_category_ids) + ')');
       if (!hasIncludeCategory) shouldNotify = false;
     }
     
-    // チケット分類IDフィルタ（除く）
-    if (filterConditions.exclude_case_category_ids && filterConditions.exclude_case_category_ids.length > 0) {
-      var hasExcludeCategory = filterConditions.exclude_case_category_ids.some(function(categoryId) {
-        return ticket.case_category_ids && ticket.case_category_ids.includes(categoryId);
-      });
-      if (hasExcludeCategory) shouldNotify = false;
-    }
-    
-    // 優先度フィルタ
-    if (filterConditions.priority_levels && filterConditions.priority_levels.length > 0) {
-      if (!filterConditions.priority_levels.includes(ticket.priority_level)) {
-        shouldNotify = false;
-      }
-    }
-    
+    console.log('最終判定: ' + shouldNotify);
     return shouldNotify;
   });
+  
+  console.log('フィルタ後チケット数: ' + filteredTickets.length);
+  console.log('=========================');
+  
+  return filteredTickets;
 }
