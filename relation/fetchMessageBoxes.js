@@ -210,14 +210,14 @@ function fetchMessageBoxes() {
   // 取得件数をログ出力
   console.log('受信箱シート ' + messageBoxes.length + ' 件を更新しました');
   
-  // 処理完了をUIで通知
-  var message = 'メッセージボックス一覧取得が完了しました。\n\n' +
-                '- メッセージボックス取得: ' + messageBoxes.length + ' 件\n' +
-                '- 受信箱シートを更新\n' +
-                '- コード表から団体コード・都道府県名を設定';
-  
-  var ui = SpreadsheetApp.getUi();
-  ui.alert('取得完了', message, ui.ButtonSet.OK);
+  // 処理完了後のメッセージを1行目D列に記載
+  var resultMessage = '📮 メッセージボックス一覧取得が完了しました。\n\n';
+  resultMessage += '- メッセージボックス取得: ' + messageBoxes.length + ' 件\n';
+  resultMessage += '- 受信箱シートを更新\n';
+  resultMessage += '- コード表から団体コード・都道府県名を設定';
+
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  sheet.getRange(1, 4).setValue(resultMessage);
 }
 
 /**

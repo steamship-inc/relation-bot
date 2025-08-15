@@ -213,17 +213,14 @@ function fetchOpenTickets() {
   
   console.log('全処理完了: ' + successCount + '/' + totalMunicipalities + ' 自治体');
   
-  // 結果表示
-  var ui = SpreadsheetApp.getUi();
-  var message = '全自治体チケット取得完了\n\n';
-  message += '成功: ' + successCount + '件の自治体\n';
-  message += '取得チケット総数: ' + totalTickets + '件\n';
+  // 結果表示をD1セルに出力
+  var resultMessage = '全自治体チケット取得完了\n'
+    + '成功: ' + successCount + '件の自治体\n'
+    + '取得チケット総数: ' + totalTickets + '件\n';
   if (errorList.length > 0) {
-    message += 'エラー: ' + errorList.length + '件\n\n';
-    message += errorList.join('\n');
+    resultMessage += 'エラー: ' + errorList.length + '件\n' + errorList.join('\n');
   }
-  
-  ui.alert('実行結果', message, ui.ButtonSet.OK);
+  sheet.getRange('D1').setValue(resultMessage);
 }
 
 

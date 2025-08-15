@@ -39,10 +39,9 @@ function runDataUpdateBatch() {
   // 確認ダイアログ
   var response = ui.alert('全データ更新', 
     '以下の処理を順次実行します：\n\n' +
-    '1. 📮 受信箱取得\n' +
-    '2. 🗂️ チケット分類取得\n' +
-    '3. 🏷️ ラベル取得\n' +
-    '4. 🎫 未対応チケット取得\n\n' +
+    '1. 🗂️ チケット分類取得\n' +
+    '2. 🏷️ ラベル取得\n' +
+    '3. 🎫 未対応チケット取得\n\n' +
     '実行には数分かかる場合があります。実行しますか？',
     ui.ButtonSet.YES_NO);
  
@@ -55,25 +54,21 @@ function runDataUpdateBatch() {
     console.log('=== 全データ更新バッチ開始 ===');
     var startTime = new Date();
     
-    // 1. 受信箱取得
-    console.log('1/4: 📮 受信箱取得 開始');
-    fetchMessageBoxes();
-    console.log('1/4: 📮 受信箱取得 完了');
     
-    // 2. チケット分類取得
-    console.log('2/4: 🗂️ チケット分類取得 開始');
+    // 1. チケット分類取得
+    console.log('1/3: 🗂️ チケット分類取得 開始');
     fetchCaseCategories();
-    console.log('2/4: 🗂️ チケット分類取得 完了');
+    console.log('1/3: 🗂️ チケット分類取得 完了');
     
-    // 3. ラベル取得
-    console.log('3/4: 🏷️ ラベル取得 開始');
+    // 2. ラベル取得
+    console.log('2/3: 🏷️ ラベル取得 開始');
     fetchLabels();
-    console.log('3/4: 🏷️ ラベル取得 完了');
+    console.log('2/3: 🏷️ ラベル取得 完了');
     
-    // 4. 未対応チケット取得
-    console.log('4/4: 🎫 未対応チケット取得 開始');
+    // 3. 未対応チケット取得
+    console.log('3/3: 🎫 未対応チケット取得 開始');
     fetchOpenTickets();
-    console.log('4/4: 🎫 未対応チケット取得 完了');
+    console.log('3/3: 🎫 未対応チケット取得 完了');
     
     var endTime = new Date();
     var duration = Math.round((endTime - startTime) / 1000);
