@@ -296,3 +296,49 @@ sequenceDiagram
     UI-->>User: 完了ダイアログ
 ```
 
+### 9. Slack自動通知（チケット取得時）- 現在コメントアウト
+```mermaid
+sequenceDiagram
+    participant FT as fetchTickets.js
+    participant Notifications as slack/notifications.js
+    participant DataFetcher as slack/data-fetcher.js
+    participant MessageBuilder as slack/message-builder.js
+    participant Slack as Slack API
+
+    %% 全自治体チケット取得中の通知フロー
+    FT->>FT: fetchOpenTickets()処理中
+    
+    loop 各自治体（50件バッチ）
+        Note over FT: チケット取得完了
+        
+        %% ※※※現在この処理はコメントアウトされています※※※
+        Note over FT: 現在この機能はコメントアウトされています
+        Note over FT: fetchTickets.js内のSlack通知呼び出し部分が無効化
+        
+        alt Slackチャンネル設定あり（コメントアウト）
+            FT-->>Notifications: [非アクティブ] sendSlackToMunicipality(tickets, config, isLast)
+            Notifications-->>Notifications: [非アクティブ] applySlackNotificationFilter(tickets, config)
+            Note over Notifications: フィルタ条件適用<br/>- include_label_ids<br/>- include_case_category_ids<br/>- priority_levels
+            
+            alt フィルタ条件該当チケットあり
+                Notifications-->>MessageBuilder: [非アクティブ] createSlackMessage(filteredTickets, config)
+                MessageBuilder-->>MessageBuilder: テンプレート適用・URL生成
+                MessageBuilder-->>Notifications: フォーマット済みメッセージ
+                Notifications-->>Slack: [非アクティブ] POST chat.postMessage<br/>(Bot Token + レート制限対応)
+                Slack-->>Notifications: 送信結果
+                
+                alt 最後の送信でない
+                    Notifications-->>Notifications: Utilities.sleep(1500)<br/>(レート制限回避)
+                end
+            else フィルタ条件該当なし
+                Notifications-->>Notifications: 送信スキップ
+                Notifications-->>Notifications: Utilities.sleep(1500)<br/>(待機時間統一)
+            end
+        end
+        
+        alt 50自治体バッチ完了
+            FT->>FT: Utilities.sleep(60000)<br/>(API制限回避)
+        end
+    end
+```
+
