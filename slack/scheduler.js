@@ -15,6 +15,7 @@
 function executeScheduledNotifications() {
   console.log('=== 定期通知スケジューラー開始 ===');
   var startTime = new Date();
+  var maxExecutionTime = 50000; // 50秒でタイムアウト
   
   try {
     // 現在の日時情報を取得
@@ -41,9 +42,18 @@ function executeScheduledNotifications() {
     
     var notificationCount = 0;
     var errorCount = 0;
+    var skippedCount = 0; // タイムアウトでスキップした件数
     
     // 各自治体の設定をチェック
     for (var i = 0; i < municipalityConfigs.length; i++) {
+      // 実行時間チェック
+      var currentTime = new Date();
+      if (currentTime - startTime > maxExecutionTime) {
+        console.log('実行時間制限により処理を中断します。残り自治体数: ' + (municipalityConfigs.length - i));
+        skippedCount = municipalityConfigs.length - i;
+        break;
+      }
+      
       var config = municipalityConfigs[i];
       
       try {
@@ -91,6 +101,9 @@ function executeScheduledNotifications() {
     console.log('実行時間: ' + duration + '秒');
     console.log('通知送信数: ' + notificationCount);
     console.log('エラー数: ' + errorCount);
+    if (skippedCount > 0) {
+      console.log('⚠️ タイムアウトによりスキップされた自治体数: ' + skippedCount);
+    }
     
   } catch (error) {
     console.error('定期通知スケジューラーでエラー発生: ' + error.toString());
@@ -204,8 +217,13 @@ function checkCronSchedule(cronSchedule, currentHour, currentMinute, currentDay,
     var targetHour = parseInt(timeMatch[1]);
     var targetMinute = parseInt(timeMatch[2]);
     
-    // 時刻が一致しない場合は実行しない
-    if (currentHour !== targetHour || currentMinute !== targetMinute) {
+    // 時刻チェック（5分の許容範囲を設ける）
+    var targetTimeInMinutes = targetHour * 60 + targetMinute;
+    var currentTimeInMinutes = currentHour * 60 + currentMinute;
+    var timeDiff = currentTimeInMinutes - targetTimeInMinutes;
+    
+    // 設定時刻から5分以内なら実行対象とする
+    if (timeDiff < 0 || timeDiff > 5) {
       return false;
     }
     
@@ -439,21 +457,85 @@ function setupProductionTrigger() {
   try {
     // 既存のトリガーを全て削除
     var deletedCount = removeExistingTriggers();
+
+    // 現在時刻を取得
+    var now = new Date();
+    console.log('setupProductionTrigger実行時刻: ' + now.toLocaleString('ja-JP'));
+
+    // initializeHourlyTriggerをすぐに実行
+    initializeHourlyTrigger();
+
+    console.log('本番用トリガーの初期化を即座に実行しました');
+    return { success: true, type: 'production' };
+
+  } catch (error) {
+    console.error('本番用トリガー設定エラー: ' + error.toString());
+    throw error;
+  }
+}
+
+/**
+ * 1時間ごとのトリガーを初期化
+ */
+function initializeHourlyTrigger() {
+  try {
+    // 一度きりのトリガーを削除
+    removeExistingTriggers();
+
+    // 現在時刻をログに記録
+    var now = new Date();
+    console.log('initializeHourlyTrigger 実行時刻: ' + now.toLocaleString('ja-JP'));
+
+    // 次の00分の時刻を計算
+    var nextHour = new Date();
+    nextHour.setMinutes(0, 0, 0); // 分、秒、ミリ秒を0に設定
     
-    // 新しいトリガーを作成（1時間ごと）
+    // 現在時刻が「00分」を過ぎている場合、次の時間に設定
+    if (nextHour <= now) {
+      nextHour.setHours(nextHour.getHours() + 1);
+    }
+    
+    console.log('次回setupRecurringTrigger実行予定時刻: ' + nextHour.toLocaleString('ja-JP'));
+
+    // 次の00分に実行される一度きりのトリガーを作成
+    ScriptApp.newTrigger('setupRecurringTrigger')
+      .timeBased()
+      .at(nextHour)
+      .create();
+
+    console.log('setupRecurringTriggerのトリガーを設定しました');
+
+  } catch (error) {
+    console.error('1時間ごとのトリガー初期化エラー: ' + error.toString());
+    throw error;
+  }
+}
+
+/**
+ * 定期的なトリガーを設定（毎回00分に実行される）
+ */
+function setupRecurringTrigger() {
+  try {
+    // 一度きりのトリガーを削除
+    removeExistingTriggers();
+
+    // 現在時刻をログに記録
+    var now = new Date();
+    console.log('setupRecurringTrigger 実行時刻: ' + now.toLocaleString('ja-JP'));
+
+    // 1時間ごとのトリガーを作成
     ScriptApp.newTrigger('executeScheduledNotifications')
       .timeBased()
       .everyHours(1)
       .create();
-    
+
     // 設定タイプを記録
     PropertiesService.getScriptProperties().setProperty('triggerType', 'production');
-    
-    console.log('本番用トリガーを設定しました（1時間ごと）');
-    return { success: true, type: 'production' };
-      
+
+    console.log('1時間ごとのトリガーを設定しました');
+
   } catch (error) {
-    console.error('本番用トリガー設定エラー: ' + error.toString());
+    console.error('定期トリガー設定エラー: ' + error.toString());
     throw error;
   }
 }
@@ -493,7 +575,10 @@ function removeExistingTriggers() {
   var deletedCount = 0;
   
   for (var i = 0; i < triggers.length; i++) {
-    if (triggers[i].getHandlerFunction() === 'executeScheduledNotifications') {
+    var handlerFunction = triggers[i].getHandlerFunction();
+    if (handlerFunction === 'executeScheduledNotifications' || 
+        handlerFunction === 'initializeHourlyTrigger' ||
+        handlerFunction === 'setupRecurringTrigger') {
       ScriptApp.deleteTrigger(triggers[i]);
       deletedCount++;
     }
