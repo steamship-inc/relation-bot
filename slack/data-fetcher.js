@@ -27,7 +27,6 @@ function getTicketsFromSheet(messageBoxId) {
     
     // ヘッダー行を確認（5行目、0ベースで4）
     var headers = data[4];
-    console.log('シートヘッダー: ' + headers.join(', '));
     
     // ID→名前変換用のマップを取得
     var caseCategoriesMap = getCaseCategoriesMap(messageBoxId);
@@ -72,7 +71,11 @@ function getTicketsFromSheet(messageBoxId) {
       }
     }
     
-    console.log('受信箱ID: ' + messageBoxId + 'のチケット件数（シートから）: ' + tickets.length);
+    if (tickets.length > 0) {
+      console.log('自治体名: ' + tickets[0].municipality_name + ' のチケット件数（シートから）: ' + tickets.length);
+    } else {
+      console.log('該当するチケットがありません（受信箱ID: ' + messageBoxId + '）');
+    }
     return tickets;
     
   } catch (error) {
@@ -179,12 +182,6 @@ function getLabelsMap(messageBoxId) {
     }
     
     console.log('ラベルマップ取得完了: ' + Object.keys(labelsMap).length + '件');
-    if (Object.keys(labelsMap).length > 0) {
-      console.log('ラベルマップサンプル: ' + JSON.stringify(Object.keys(labelsMap).slice(0, 5).reduce(function(obj, key) {
-        obj[key] = labelsMap[key];
-        return obj;
-      }, {})));
-    }
     return labelsMap;
     
   } catch (error) {

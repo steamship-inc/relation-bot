@@ -208,7 +208,7 @@ function applySlackNotificationFilter(tickets, config) {
       var hasIncludeLabel = filterConditions.include_label_ids.some(function(labelId) {
         return ticket.label_ids && ticket.label_ids.includes(labelId);
       });
-      console.log('ラベルフィルタ結果: ' + hasIncludeLabel + ' (必要: ' + JSON.stringify(filterConditions.include_label_ids) + ')');
+      // console.log('ラベルフィルタ結果: ' + hasIncludeLabel + ' (必要: ' + JSON.stringify(filterConditions.include_label_ids) + ')');
       if (!hasIncludeLabel) shouldNotify = false;
     }
     
@@ -217,7 +217,7 @@ function applySlackNotificationFilter(tickets, config) {
       var hasIncludeCategory = filterConditions.include_case_category_ids.some(function(categoryId) {
         return ticket.case_category_ids && ticket.case_category_ids.includes(categoryId);
       });
-      console.log('分類フィルタ結果: ' + hasIncludeCategory + ' (必要: ' + JSON.stringify(filterConditions.include_case_category_ids) + ')');
+     // console.log('分類フィルタ結果: ' + hasIncludeCategory + ' (必要: ' + JSON.stringify(filterConditions.include_case_category_ids) + ')');
       if (!hasIncludeCategory) shouldNotify = false;
     }
     

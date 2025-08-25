@@ -52,10 +52,64 @@
       selectedMunicipalityCode = municipalityId;
       document.getElementById('confirmBtn').disabled = false;
       
-      // 選択された自治体名を表示
+      // 選択された自治体名とフィルタ情報を表示
       var municipalityName = configs[municipalityId].name;
-      document.getElementById('confirmBtn').textContent = '「' + municipalityName + '」に送信';
+      var filterInfo = configs[municipalityId].slackNotificationFilter;
+      
+      var buttonText = '「' + municipalityName + '」に送信';
+      if (filterInfo) {
+        buttonText += ' (フィルタ適用)';
+      } else {
+        buttonText += ' (全件送信)';
+      }
+      
+      document.getElementById('confirmBtn').textContent = buttonText;
+      
+      // フィルタ詳細情報を表示
+      showFilterInfo(municipalityId, filterInfo);
     }
+  }
+
+  function showFilterInfo(municipalityId, filterInfo) {
+    // 既存のフィルタ情報表示を削除
+    var existingFilterInfo = document.querySelector('.filter-info');
+    if (existingFilterInfo) {
+      existingFilterInfo.remove();
+    }
+
+    var selectedItem = document.querySelector('[data-id="' + municipalityId + '"]');
+    if (!selectedItem) return;
+
+    var filterInfoDiv = document.createElement('div');
+    filterInfoDiv.className = 'filter-info';
+    
+    if (!filterInfo) {
+      filterInfoDiv.innerHTML = 
+        '<div class="filter-status no-filter">' +
+          '<span class="filter-icon">📋</span>' +
+          '<span class="filter-text">フィルタ設定なし - 全チケットが送信されます</span>' +
+        '</div>';
+    } else {
+      var filterDetails = [];
+      
+      if (filterInfo.include_label_ids && filterInfo.include_label_ids.length > 0) {
+        filterDetails.push('ラベル: ' + filterInfo.include_label_ids.length + '個指定');
+      }
+      
+      if (filterInfo.include_case_category_ids && filterInfo.include_case_category_ids.length > 0) {
+        filterDetails.push('分類: ' + filterInfo.include_case_category_ids.length + '個指定');
+      }
+      
+      var detailText = filterDetails.length > 0 ? filterDetails.join(' / ') : '条件設定済み';
+      
+      filterInfoDiv.innerHTML = 
+        '<div class="filter-status has-filter">' +
+          '<span class="filter-icon">🔍</span>' +
+          '<span class="filter-text">フィルタ適用: ' + detailText + '</span>' +
+        '</div>';
+    }
+    
+    selectedItem.appendChild(filterInfoDiv);
   }
 
   function confirmSelection() {
@@ -73,16 +127,28 @@
       // 選択結果を直接渡してダイアログを閉じる
       setTimeout(function() { updateProgress('config', 'success'); }, 500);
       setTimeout(function() { updateProgress('tickets', 'success'); }, 1000);
-      setTimeout(function() { updateProgress('message', 'success'); }, 1200);
+      setTimeout(function() { updateProgress('filter', 'success'); }, 1200);
       setTimeout(function() { updateProgress('slack', 'success'); }, 1500);
       
       google.script.run
-        .withSuccessHandler(function() {
-          console.log('processSelectedMunicipality成功');
-          updateProgress('✅ 送信完了', 'success');
+        .withSuccessHandler(function(result) {
+          console.log('processSelectedMunicipality成功:', result);
+          
+          if (!result.success) {
+            if (result.reason === 'no_tickets') {
+              updateProgress('⏭️ チケットなしのため送信をスキップしました', 'skipped');
+            } else if (result.reason === 'no_filtered_tickets') {
+              updateProgress('🔍 フィルタ条件に該当するチケットがないため送信をスキップしました', 'skipped');
+              showFilterResult(result);
+            }
+          } else {
+            updateProgress('✅ 送信完了', 'success');
+            showFilterResult(result);
+          }
+          
           setTimeout(function() {
             google.script.host.close();
-          }, 2000);
+          }, 3000);
         })
         .withFailureHandler(function(error) {
           console.error('processSelectedMunicipality失敗:', error);
@@ -91,12 +157,47 @@
           confirmBtn.textContent = '「' + configs[selectedMunicipalityCode].name + '」に送信';
           setTimeout(function() {
             hideProgressDialog();
-          }, 3000);
+          }, 5000);
         })
         .processSelectedMunicipality(selectedMunicipalityCode);
     } else {
       console.log('自治体が選択されていません');
     }
+  }
+
+  function showFilterResult(result) {
+    var filterResultDiv = document.createElement('div');
+    filterResultDiv.className = 'filter-result';
+    
+    var filterStatus = '';
+    if (!result.filterSettings) {
+      filterStatus = 'フィルタ設定なし - 全チケット対象';
+    } else {
+      var conditions = [];
+      if (result.filterSettings.include_label_ids && result.filterSettings.include_label_ids.length > 0) {
+        conditions.push('ラベル' + result.filterSettings.include_label_ids.length + '個');
+      }
+      if (result.filterSettings.include_case_category_ids && result.filterSettings.include_case_category_ids.length > 0) {
+        conditions.push('分類' + result.filterSettings.include_case_category_ids.length + '個');
+      }
+      filterStatus = 'フィルタ適用: ' + (conditions.length > 0 ? conditions.join(' / ') : '条件設定済み');
+    }
+    
+    filterResultDiv.innerHTML = 
+      '<div class="filter-summary">' +
+        '<h3>📊 フィルタ適用結果</h3>' +
+        '<div class="filter-detail">' +
+          '<div class="count-info">' +
+            '<span class="original-count">元チケット数: ' + result.originalCount + '件</span>' +
+            '<span class="arrow">→</span>' +
+            '<span class="filtered-count">送信対象: ' + result.filteredCount + '件</span>' +
+          '</div>' +
+          '<div class="filter-status-text">' + filterStatus + '</div>' +
+        '</div>' +
+      '</div>';
+    
+    var progressResult = document.getElementById('progressResult');
+    progressResult.appendChild(filterResultDiv);
   }
 
   function showProgressDialog(municipalityName) {
@@ -124,8 +225,8 @@
         '</div>' +
         '<div class="progress-step" id="step3">' +
           '<div class="step-icon">⏳</div>' +
-          '<div class="step-text">Slackメッセージを作成中...</div>' +
-          '<div class="step-time">0.01〜0.05秒</div>' +
+          '<div class="step-text">フィルタ条件を適用中...</div>' +
+          '<div class="step-time">0.01〜0.1秒</div>' +
         '</div>' +
         '<div class="progress-step" id="step4">' +
           '<div class="step-icon">⏳</div>' +
@@ -142,7 +243,7 @@
     var stepMap = {
       'config': 'step1',
       'tickets': 'step2', 
-      'message': 'step3',
+      'filter': 'step3',
       'slack': 'step4'
     };
     
