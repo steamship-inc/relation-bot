@@ -88,23 +88,10 @@ function fetchOpenTickets() {
       
       console.log('自治体: ' + config.name + ', チケット数: ' + tickets.length);
       
-      // デバッグ用：最初のチケットの全プロパティを出力（APIレスポンス確認用）
-      if (tickets.length > 0) {
-        console.log('=== API レスポンス サンプル（' + config.name + '）===');
-        console.log('チケット数: ' + tickets.length);
-        console.log('最初のチケットの全プロパティ: ' + JSON.stringify(tickets[0], null, 2));
-        console.log('=====================================');
-      }
-      
       // チケットデータを配列に追加（一括処理用）
       tickets.forEach(function(ticket) {
         var caseCategoryIds = ticket.case_category_ids || [];
         var labelIds = ticket.label_ids || [];
-        
-        // デバッグ用ログ：ラベルIDをログ出力
-        if (labelIds.length > 0) {
-          console.log('チケットID: ' + ticket.ticket_id + ', ラベルID: ' + JSON.stringify(labelIds));
-        }
         
         var ticketData = [
           config.messageBoxId,        // 受信箱ID
