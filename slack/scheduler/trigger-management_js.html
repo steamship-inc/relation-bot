@@ -1,0 +1,67 @@
+<script>
+function setProduction() {
+    showLoading();
+    google.script.run
+        .withSuccessHandler((result) => {
+            updateStatus('🟢 本番用(1時間ごと)');
+            showMessage('本番用(1時間ごと)を設定しました。');
+        })
+        .withFailureHandler((error) => {
+            showMessage('エラーが発生しました: ' + error.message, true);
+        })
+        .setupProductionTrigger();
+}
+
+function setTest() {
+    showLoading();
+    google.script.run
+        .withSuccessHandler((result) => {
+            updateStatus('🔶 検証用(1分ごと)');
+            showMessage('検証用(1分ごと)を設定しました。');
+        })
+        .withFailureHandler((error) => {
+            showMessage('エラーが発生しました: ' + error.message, true);
+        })
+        .setupTestTrigger();
+}
+
+function deleteTrigger() {
+    showLoading();
+    google.script.run
+        .withSuccessHandler((result) => {
+            updateStatus('❌ 未設定');
+            showMessage('定期通知を削除しました。');
+        })
+        .withFailureHandler((error) => {
+            showMessage('エラーが発生しました: ' + error.message, true);
+        })
+        .removeScheduledNotificationTrigger();
+}
+
+function updateStatus(newStatus) {
+    document.getElementById('status').innerHTML = '<strong>現在の状態:</strong> ' + newStatus;
+}
+
+function showMessage(text, isError) {
+    var messageDiv = document.getElementById('message');
+    messageDiv.innerHTML = text;
+    messageDiv.classList.remove('hidden');
+    
+    if (isError) {
+        messageDiv.classList.add('error');
+    } else {
+        messageDiv.classList.remove('error');
+    }
+    
+    hideLoading();
+}
+
+function showLoading() {
+    var buttons = document.getElementById('buttons');
+    buttons.innerHTML = '<p class="loading">設定中...</p>';
+}
+
+function hideLoading() {
+    // ボタンは非表示のまま（設定完了後は閉じるボタンのみ表示）
+}
+</script>

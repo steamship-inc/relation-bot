@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>定期通知トリガー管理</title>
+    <?!= HtmlService.createHtmlOutputFromFile('slack/scheduler/trigger-management_css').getContent() ?>
+</head>
+<body>
+    <div class="container">
+        <h3>定期通知トリガー管理</h3>
+        <p id="status" class="status"><strong>現在の状態:</strong> <?= currentStatus ?></p>
+        
+        <div id="buttons" class="buttons-container">
+            <p class="notice">
+                トリガー設定を選択してください：<br><br>
+                <strong>注意:</strong> 既存のトリガーは自動的に削除されます
+            </p>
+            
+            <div class="button-wrapper">
+                <button onclick="setProduction()" class="btn btn-production">
+                    🟢 本番設定<br><small>(1時間ごと)</small>
+                </button>
+            </div>
+            
+            <div class="button-wrapper">
+                <button onclick="setTest()" class="btn btn-test">
+                    🔶 検証設定<br><small>(1分ごと)</small>
+                </button>
+            </div>
+            
+            <div class="button-wrapper">
+                <button onclick="deleteTrigger()" class="btn btn-delete">
+                    🗑️ 削除<br><small>(通知停止)</small>
+                </button>
+            </div>
+        </div>
+        
+        <div id="message" class="message hidden"></div>
+        
+        <div class="close-button-container">
+            <button onclick="google.script.host.close()" class="btn btn-close">
+                閉じる
+            </button>
+        </div>
+    </div>
+
+    <?!= HtmlService.createHtmlOutputFromFile('slack/scheduler/trigger-management_js').getContent() ?>
+</body>
+</html>

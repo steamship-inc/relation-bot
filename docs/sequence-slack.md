@@ -91,7 +91,7 @@ sequenceDiagram
 sequenceDiagram
     participant User as ユーザー
     participant UI as スプレッドシートUI
-    participant Scheduler as slack/scheduler.js
+    participant Scheduler as slack/scheduler/scheduler.js
     participant Dialog as HTMLダイアログ
     participant GAS as Google Apps Script
     
@@ -139,7 +139,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Trigger as 時間トリガー
-    participant Scheduler as slack/scheduler.js
+    participant Scheduler as slack/scheduler/scheduler.js
     participant DataFetcher as slack/data-fetcher.js
     participant Notifications as slack/notifications.js
     participant MessageBuilder as slack/message-builder.js
