@@ -217,13 +217,13 @@ function checkCronSchedule(cronSchedule, currentHour, currentMinute, currentDay,
     var targetHour = parseInt(timeMatch[1]);
     var targetMinute = parseInt(timeMatch[2]);
     
-    // 時刻チェック（5分の許容範囲を設ける）
+    // 時刻チェック（3分の許容範囲を設ける）
     var targetTimeInMinutes = targetHour * 60 + targetMinute;
     var currentTimeInMinutes = currentHour * 60 + currentMinute;
     var timeDiff = currentTimeInMinutes - targetTimeInMinutes;
-    
-    // 設定時刻から5分以内なら実行対象とする
-    if (timeDiff < 0 || timeDiff > 5) {
+
+    // 設定時刻から3分以内なら実行対象とする
+    if (timeDiff < -3 || timeDiff > 3) {
       return false;
     }
     
