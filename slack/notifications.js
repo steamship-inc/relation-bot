@@ -1,12 +1,6 @@
 /**
  * Slack通知用コアモジュール
  * 自動通知とAPI通信を担当
- * 
- * 注意: 手動送信機能は slack/sendUI/manualSend.js に移動しました
- * 
- * 依存関係:
- * - slack/data-fetcher.js: loadMunicipalityConfigFromSheet(), getTicketsFromSheet()
- * - slack/message-builder.js: createSlackMessage()
  */
 
 /**
