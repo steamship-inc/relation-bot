@@ -47,12 +47,6 @@ function sendSlack(tickets, config) {
 function sendWithBotToken(tickets, config, botToken) {
   var message = createSlackMessage(tickets, config);
   
-  console.log('=== Slack送信デバッグ ===');
-  console.log('送信先チャンネル: ' + config.slackChannel);
-  console.log('メッセージ内容: ' + message);
-  console.log('Bot Token長さ: ' + (botToken ? botToken.length : 'なし'));
-  console.log('Bot Token開始文字: ' + (botToken ? botToken.substring(0, 10) + '...' : 'なし'));
-  
   // チャンネル名をそのまま使用（#付きも対応）
   var channelName = config.slackChannel;
   
@@ -77,10 +71,7 @@ function sendWithBotToken(tickets, config, botToken) {
       channelType = '英語チャンネル名';
     }
   }
-  
-  console.log('送信先タイプ: ' + channelType);
-  console.log('送信先値: "' + channelName + '"');
-  console.log('送信先文字数: ' + channelName.length);
+  console.log('送信先タイプ: ' + channelType + ' / 送信先値: "' + channelName + '"');
   
   // チャンネル名をそのまま使用して送信
   var result = attemptSlackSend(channelName, message, botToken, channelType);
@@ -97,21 +88,13 @@ function sendWithBotToken(tickets, config, botToken) {
  * @return {boolean} 送信成功かどうか
  */
 function attemptSlackSend(channel, message, botToken, description) {
-  console.log('=== attemptSlackSend デバッグ開始 ===');
-  console.log('チャンネル: "' + channel + '"');
-  console.log('説明: ' + description);
-  console.log('メッセージ長: ' + message.length);
-  console.log('ボットトークン存在: ' + (botToken ? 'あり' : 'なし'));
   
   var payload = {
     channel: channel,
     text: message
   };
   
-  console.log('送信ペイロード: ' + JSON.stringify(payload));
-
   try {
-    console.log('Slack API呼び出し開始...');
     var response = UrlFetchApp.fetch('https://slack.com/api/chat.postMessage', {
       method: 'POST',
       headers: {
@@ -121,12 +104,7 @@ function attemptSlackSend(channel, message, botToken, description) {
       payload: JSON.stringify(payload)
     });
     
-    console.log('Slack API レスポンス受信完了');
-    console.log('レスポンス ステータス: ' + response.getResponseCode());
-    console.log('レスポンス ヘッダー: ' + JSON.stringify(response.getHeaders()));
-    
     var result = JSON.parse(response.getContentText());
-    console.log('Slack API レスポンス (' + description + '): ' + JSON.stringify(result));
     
     if (result.ok) {
       console.log('✅ Slack通知送信成功（' + description + ' - 送信先: ' + channel + '）');
@@ -190,10 +168,7 @@ function sendSlackWithRateLimit(tickets, config, isLast) {
  * @param {boolean} isLast 最後の送信かどうか
  */
 function sendSlackToMunicipality(tickets, config, isLast) {
-  console.log('=== sendSlackToMunicipality デバッグ ===');
-  console.log('自治体名: ' + config.name);
-  console.log('Slackチャンネル: ' + config.slackChannel);
-  console.log('チケット数（フィルタ前）: ' + tickets.length);
+  console.log(`自治体名: ${config.name} / Slackチャンネル: ${config.slackChannel} / チケット数（フィルタ前）: ${tickets.length}`);
   
   // Slack通知フィルタ条件を適用
   var filteredTickets = applySlackNotificationFilter(tickets, config);
@@ -225,11 +200,6 @@ function applySlackNotificationFilter(tickets, config) {
   // 設定シートからSlack通知フィルタ条件を取得
   var filterConditions = config.slackNotificationFilter;
   
-  console.log('=== フィルタ適用デバッグ ===');
-  console.log('自治体: ' + config.name);
-  console.log('フィルタ条件: ' + JSON.stringify(filterConditions));
-  console.log('入力チケット数: ' + tickets.length);
-  
   if (!filterConditions) {
     // フィルタ条件が設定されていない場合は全チケットを対象
     console.log('フィルタ条件なし - 全チケット対象');
@@ -238,11 +208,6 @@ function applySlackNotificationFilter(tickets, config) {
   
   var filteredTickets = tickets.filter(function(ticket) {
     var shouldNotify = true;
-    
-    console.log('--- チケット検証 ---');
-    console.log('チケットID: ' + ticket.id);
-    console.log('チケット分類IDs: ' + JSON.stringify(ticket.case_category_ids));
-    console.log('ラベルIDs: ' + JSON.stringify(ticket.label_ids));
     
     // ラベルIDフィルタ（含む）
     if (filterConditions.include_label_ids && filterConditions.include_label_ids.length > 0) {
@@ -262,12 +227,9 @@ function applySlackNotificationFilter(tickets, config) {
       if (!hasIncludeCategory) shouldNotify = false;
     }
     
-    console.log('最終判定: ' + shouldNotify);
     return shouldNotify;
   });
   
-  console.log('フィルタ後チケット数: ' + filteredTickets.length);
-  console.log('=========================');
   
   return filteredTickets;
 }
