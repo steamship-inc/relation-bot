@@ -20,7 +20,7 @@ function onOpen() {
    ui.createMenu('🔔 Slack')
     .addItem('📤 Slack手動送信', 'manualSendSlack')
     .addSeparator()
-    .addItem('🔧 Slackフィルタ設定', 'showFilterConfigDialog')
+    .addItem('🔧 通知フィルタ設定', 'showFilterConfigDialog')
     .addSeparator()
     .addItem('⚙️ 定期通知トリガー管理', 'manageScheduledNotificationTrigger')
     .addSeparator()

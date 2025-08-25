@@ -44,7 +44,7 @@ function filterMunicipalityList(searchTerm) {
   items.forEach(function(item) {
     const name = item.querySelector('.municipality-name').textContent.toLowerCase();
     const id = item.dataset.id.toLowerCase();
-    const prefecture = item.querySelector('.municipality-id').textContent.toLowerCase();
+    const prefecture = item.querySelector('.municipality-prefecture').textContent.toLowerCase();
     
     if (name.includes(searchTermLower) || id.includes(searchTermLower) || prefecture.includes(searchTermLower)) {
       item.style.display = 'block';
@@ -136,7 +136,6 @@ function showFilterConfigModal(data) {
   
   // 自治体情報を表示
   document.getElementById('selectedMunicipalityName').textContent = currentMunicipalityConfig.name;
-  document.getElementById('selectedMessageBoxId').textContent = selectedMunicipalityId;
   
   // チェックボックスを生成
   generateCategoryCheckboxes();

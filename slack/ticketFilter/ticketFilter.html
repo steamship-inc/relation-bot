@@ -6,38 +6,35 @@
 </head>
 <body>
   <div id="municipalitySelectionModal" class="modal-content">
-    <div class="container">
-      <h2>🏛️ 自治体選択</h2>
-      <p>フィルタ設定を行う自治体を選択してください</p>
-      
-      <div class="search-container">
-        <input type="text" id="municipalitySearch" placeholder="自治体名で検索..." autocomplete="off">
-      </div>
-      
-      <div class="municipality-list" id="municipalityList">
-        <? for (var messageBoxId in configs) { ?>
-          <div class="municipality-item" data-id="<?= messageBoxId ?>" onclick="selectMunicipality('<?= messageBoxId ?>')">
-            <div class="municipality-name"><?= configs[messageBoxId].name ?></div>
-            <div class="municipality-id">受信箱ID: <?= messageBoxId ?> | 都道府県: <?= configs[messageBoxId].prefecture ?></div>
-          </div>
-        <? } ?>
-      </div>
-      
-      <div class="button-group">
-        <button class="select-btn" id="selectButton" onclick="proceedToFilterConfig()" disabled>
-          ✅ この自治体で設定する
-        </button>
-        <button class="cancel-btn" onclick="google.script.host.close()">
-          ❌ キャンセル
-        </button>
-      </div>
+    <h2>🏛️ 自治体選択</h2>
+    <p>フィルタ設定を行う自治体を選択してください</p>
+    
+    <div class="search-container">
+      <input type="text" id="municipalitySearch" placeholder="自治体名で検索..." autocomplete="off">
+    </div>
+    
+    <div class="municipality-list" id="municipalityList">
+      <? for (var messageBoxId in configs) { ?>
+        <div class="municipality-item" data-id="<?= messageBoxId ?>" onclick="selectMunicipality('<?= messageBoxId ?>')">
+          <div class="municipality-name"><?= configs[messageBoxId].name ?></div>
+          <div class="municipality-prefecture">都道府県: <?= configs[messageBoxId].prefecture ?></div>
+        </div>
+      <? } ?>
+    </div>
+    
+    <div class="button-group">
+      <button class="select-btn" id="selectButton" onclick="proceedToFilterConfig()" disabled>
+        ✅ この自治体で設定する
+      </button>
+      <button class="cancel-btn" onclick="google.script.host.close()">
+        ❌ キャンセル
+      </button>
     </div>
   </div>
 
   <div id="filterConfigModal" class="modal-content" style="display: none;">
     <h2>🔧 Slackフィルタ設定</h2>
     <p><strong>自治体:</strong> <span id="selectedMunicipalityName"></span></p>
-    <p><strong>受信箱ID:</strong> <span id="selectedMessageBoxId"></span></p>
     
     <div class="section">
       <h3>🗂️ チケット分類フィルタ</h3>
