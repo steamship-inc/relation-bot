@@ -85,7 +85,7 @@ function executeScheduledNotifications() {
           console.log(config.name + ': 通知送信完了 (チケット数: ' + tickets.length + ')');
           
         } else {
-          console.log(config.name + ': 実行条件に不一致 - スキップ');
+          // console.log(config.name + ': 実行条件に不一致 - スキップ');
         }
         
       } catch (error) {
@@ -217,14 +217,25 @@ function checkCronSchedule(cronSchedule, currentHour, currentMinute, currentDay,
     var targetHour = parseInt(timeMatch[1]);
     var targetMinute = parseInt(timeMatch[2]);
     
-    // 時刻チェック（3分の許容範囲を設ける）
-    var targetTimeInMinutes = targetHour * 60 + targetMinute;
-    var currentTimeInMinutes = currentHour * 60 + currentMinute;
-    var timeDiff = currentTimeInMinutes - targetTimeInMinutes;
-
-    // 設定時刻から3分以内なら実行対象とする
-    if (timeDiff < -3 || timeDiff > 3) {
-      return false;
+    // トリガータイプによって時刻チェック方法を変更
+    var triggerType = PropertiesService.getScriptProperties().getProperty('triggerType');
+    
+    if (triggerType === 'test') {
+      // テスト用: 時刻と分を厳密にチェック（設定時刻と完全一致）
+      if (currentHour !== targetHour || currentMinute !== targetMinute) {
+        return false;
+      }
+      console.log('設定時刻: ' + targetHour + ':' + String(targetMinute).padStart(2, '0') + 
+                  ', 実行時刻: ' + currentHour + ':' + String(currentMinute).padStart(2, '0') + 
+                  ' (テスト用: 時分厳密チェック)');
+    } else {
+      // 本番用: 同じ時間帯なら実行（9時設定なら9時台のいつでも）
+      if (currentHour < targetHour || currentHour >= targetHour + 1) {
+        return false;
+      }
+      console.log('設定時刻: ' + targetHour + ':' + String(targetMinute).padStart(2, '0') + 
+                  ', 実行時刻: ' + currentHour + ':' + String(currentMinute).padStart(2, '0') + 
+                  ' (本番用: ' + targetHour + '時台で実行)');
     }
     
     // 頻度部分を抽出
