@@ -17,7 +17,7 @@ function onOpen() {
     .addItem('🔄 全データ更新（順次実行）', 'runDataUpdateBatch')
     .addToUi();
 
-   ui.createMenu('🔔 Slack')
+   ui.createMenu('🔔 slack')
     .addItem('📤 Slack手動送信', 'manualSendSlack')
     .addSeparator()
     .addItem('🔧 通知フィルタ設定', 'showFilterConfigDialog')
