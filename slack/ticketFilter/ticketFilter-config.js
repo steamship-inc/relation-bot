@@ -26,7 +26,7 @@ function showFilterConfigDialog() {
  * @param {Object} configs 全自治体設定
  */
 function showIntegratedModalDialog(configs) {
-  var htmlOutput = HtmlService.createTemplateFromFile('slack/slack-filter/ticketFilter');
+  var htmlOutput = HtmlService.createTemplateFromFile('slack/ticketFilter/ticketFilter');
   
   // テンプレートにデータを渡す
   htmlOutput.configs = configs;

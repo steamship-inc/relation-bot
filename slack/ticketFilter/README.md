@@ -5,7 +5,7 @@
 ## ファイル構造
 
 ```
-slack/slack-filter/
+slack/ticketFilter/
 ├── ticketFilter-config.js   # サーバーサイドJavaScript（Google Apps Script）
 ├── ticketFilter.html        # メインHTML（自治体選択 + フィルター設定）
 ├── ticketFilter_css.html    # スタイルシート（CSS）
