@@ -1,0 +1,322 @@
+<script>
+// グローバル変数
+let selectedMunicipalityId = null;
+let currentMunicipalityConfig = null;
+let labelsMap = {};
+let categoriesMap = {};
+let currentFilter = {};
+
+// DOM要素
+const municipalitySelectionModal = document.getElementById('municipalitySelectionModal');
+const filterConfigModal = document.getElementById('filterConfigModal');
+const searchInput = document.getElementById('municipalitySearch');
+const municipalityList = document.getElementById('municipalityList');
+const selectButton = document.getElementById('selectButton');
+
+// 初期化
+document.addEventListener('DOMContentLoaded', function() {
+  initializeMunicipalitySelection();
+});
+
+// 自治体選択モーダルの初期化
+function initializeMunicipalitySelection() {
+  // 検索機能
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      filterMunicipalityList(this.value);
+    });
+
+    // Enterキーで検索/選択
+    searchInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        handleEnterKeyPress();
+      }
+    });
+  }
+}
+
+// 自治体リストをフィルタリング
+function filterMunicipalityList(searchTerm) {
+  const searchTermLower = searchTerm.toLowerCase();
+  const items = municipalityList.querySelectorAll('.municipality-item');
+  let hasVisibleItems = false;
+  
+  items.forEach(function(item) {
+    const name = item.querySelector('.municipality-name').textContent.toLowerCase();
+    const id = item.dataset.id.toLowerCase();
+    const prefecture = item.querySelector('.municipality-id').textContent.toLowerCase();
+    
+    if (name.includes(searchTermLower) || id.includes(searchTermLower) || prefecture.includes(searchTermLower)) {
+      item.style.display = 'block';
+      hasVisibleItems = true;
+    } else {
+      item.style.display = 'none';
+    }
+  });
+  
+  // 検索結果なしの表示
+  showNoResultsMessage(!hasVisibleItems && searchTerm);
+}
+
+// 検索結果なしメッセージの表示/非表示
+function showNoResultsMessage(show) {
+  let noResultsDiv = document.getElementById('noResults');
+  
+  if (show) {
+    if (!noResultsDiv) {
+      noResultsDiv = document.createElement('div');
+      noResultsDiv.id = 'noResults';
+      noResultsDiv.className = 'no-results';
+      noResultsDiv.textContent = '該当する自治体が見つかりませんでした';
+      municipalityList.appendChild(noResultsDiv);
+    }
+    noResultsDiv.style.display = 'block';
+  } else if (noResultsDiv) {
+    noResultsDiv.style.display = 'none';
+  }
+}
+
+// Enterキー押下時の処理
+function handleEnterKeyPress() {
+  const visibleItems = Array.from(municipalityList.querySelectorAll('.municipality-item'))
+    .filter(item => item.style.display !== 'none');
+  
+  if (visibleItems.length === 1) {
+    // 検索結果が1つの場合は自動選択
+    selectMunicipality(visibleItems[0].dataset.id);
+  }
+}
+
+// 自治体選択
+function selectMunicipality(messageBoxId) {
+  // 既存の選択状態をクリア
+  municipalityList.querySelectorAll('.municipality-item').forEach(function(item) {
+    item.classList.remove('selected');
+  });
+  
+  // 新しい選択状態を設定
+  const selectedItem = municipalityList.querySelector('[data-id="' + messageBoxId + '"]');
+  if (selectedItem) {
+    selectedItem.classList.add('selected');
+    selectedMunicipalityId = messageBoxId;
+    selectButton.disabled = false;
+  }
+}
+
+// フィルタ設定画面に進む
+function proceedToFilterConfig() {
+  if (!selectedMunicipalityId) {
+    alert('自治体を選択してください');
+    return;
+  }
+  
+  // ボタンを無効化して重複クリック防止
+  selectButton.disabled = true;
+  selectButton.textContent = '🔄 設定画面を準備中...';
+  
+  // サーバーサイド関数を呼び出してフィルタ設定データを取得
+  google.script.run
+    .withSuccessHandler(function(result) {
+      showFilterConfigModal(result);
+    })
+    .withFailureHandler(function(error) {
+      alert('エラー: ' + error.toString());
+      selectButton.disabled = false;
+      selectButton.textContent = '✅ この自治体で設定する';
+    })
+    .getFilterConfigData(selectedMunicipalityId);
+}
+
+// フィルタ設定モーダルを表示
+function showFilterConfigModal(data) {
+  currentMunicipalityConfig = data.config;
+  labelsMap = data.labelsMap;
+  categoriesMap = data.categoriesMap;
+  currentFilter = data.currentFilter || {};
+  
+  // 自治体情報を表示
+  document.getElementById('selectedMunicipalityName').textContent = currentMunicipalityConfig.name;
+  document.getElementById('selectedMessageBoxId').textContent = selectedMunicipalityId;
+  
+  // チェックボックスを生成
+  generateCategoryCheckboxes();
+  generateLabelCheckboxes();
+  
+  // プレビューを更新
+  updatePreview();
+  
+  // モーダルを切り替え
+  municipalitySelectionModal.style.display = 'none';
+  filterConfigModal.style.display = 'block';
+  
+  // イベントリスナーを設定
+  setupFilterConfigEventListeners();
+}
+
+// チケット分類チェックボックスを生成
+function generateCategoryCheckboxes() {
+  const container = document.getElementById('includeCategories');
+  container.innerHTML = '';
+  
+  for (const categoryId in categoriesMap) {
+    const isChecked = currentFilter.include_case_category_ids && 
+                     currentFilter.include_case_category_ids.includes(parseInt(categoryId));
+    
+    const checkboxItem = document.createElement('div');
+    checkboxItem.className = 'checkbox-item';
+    
+    checkboxItem.innerHTML = `
+      <input type="checkbox" id="include_category_${categoryId}" value="${categoryId}" ${isChecked ? 'checked' : ''}>
+      <label for="include_category_${categoryId}">${categoryId}: ${categoriesMap[categoryId]}</label>
+    `;
+    
+    container.appendChild(checkboxItem);
+  }
+}
+
+// ラベルチェックボックスを生成
+function generateLabelCheckboxes() {
+  const container = document.getElementById('includeLabels');
+  container.innerHTML = '';
+  
+  for (const labelId in labelsMap) {
+    const isChecked = currentFilter.include_label_ids && 
+                     currentFilter.include_label_ids.includes(parseInt(labelId));
+    
+    const checkboxItem = document.createElement('div');
+    checkboxItem.className = 'checkbox-item';
+    
+    checkboxItem.innerHTML = `
+      <input type="checkbox" id="include_label_${labelId}" value="${labelId}" ${isChecked ? 'checked' : ''}>
+      <label for="include_label_${labelId}">${labelId}: ${labelsMap[labelId]}</label>
+    `;
+    
+    container.appendChild(checkboxItem);
+  }
+}
+
+// フィルタ設定モーダルのイベントリスナーを設定
+function setupFilterConfigEventListeners() {
+  // 設定変更時にプレビューを更新
+  document.addEventListener('change', updatePreview);
+}
+
+// 設定プレビューを更新
+function updatePreview() {
+  const config = buildConfigFromForm();
+  const preview = document.getElementById('configPreview');
+  
+  if (Object.keys(config).length === 0) {
+    preview.textContent = 'フィルタ設定なし（全チケット通知）';
+  } else {
+    preview.textContent = JSON.stringify(config, null, 2);
+  }
+}
+
+// フォームから設定オブジェクトを構築
+function buildConfigFromForm() {
+  const config = {};
+  
+  // 通知対象分類
+  const includeCategories = [];
+  document.querySelectorAll('#includeCategories input:checked').forEach(function(cb) {
+    includeCategories.push(parseInt(cb.value));
+  });
+  if (includeCategories.length > 0) {
+    config.include_case_category_ids = includeCategories;
+  }
+  
+  // 通知対象ラベル
+  const includeLabels = [];
+  document.querySelectorAll('#includeLabels input:checked').forEach(function(cb) {
+    includeLabels.push(parseInt(cb.value));
+  });
+  if (includeLabels.length > 0) {
+    config.include_label_ids = includeLabels;
+  }
+  
+  return config;
+}
+
+// 通知表示
+function showNotification(message, type, duration) {
+  duration = duration || 3000;
+  
+  // 既存の通知があれば削除
+  const existingNotification = document.querySelector('.notification');
+  if (existingNotification) {
+    existingNotification.remove();
+  }
+  
+  // 新しい通知を作成
+  const notification = document.createElement('div');
+  notification.className = 'notification ' + type;
+  notification.textContent = message;
+  
+  // ページに追加
+  document.body.appendChild(notification);
+  
+  // アニメーション表示
+  setTimeout(function() {
+    notification.classList.add('show');
+  }, 10);
+  
+  // 自動で非表示
+  setTimeout(function() {
+    notification.classList.add('hide');
+    setTimeout(function() {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 300);
+  }, duration);
+}
+
+// 設定保存
+function saveConfig() {
+  const config = buildConfigFromForm();
+  
+  // 保存ボタンを無効化して状態変更
+  const saveButton = document.querySelector('.save-btn');
+  const originalText = saveButton.textContent;
+  saveButton.disabled = true;
+  saveButton.textContent = '🔄 設定を保存中...';
+  
+  // サーバーサイド関数を呼び出し
+  google.script.run
+    .withSuccessHandler(function() {
+      saveButton.textContent = '✅ 保存完了';
+      showNotification('✅ フィルタ設定を保存しました', 'success', 2000);
+      setTimeout(function() {
+        google.script.host.close();
+      }, 2500);
+    })
+    .withFailureHandler(function(error) {
+      // エラー時はボタンを元に戻す
+      saveButton.disabled = false;
+      saveButton.textContent = originalText;
+      showNotification('❌ 保存エラー: ' + error.toString(), 'error', 5000);
+    })
+    .saveFilterConfig(selectedMunicipalityId, config);
+}
+
+// 自治体選択画面に戻る
+function goBackToMunicipalitySelection() {
+  filterConfigModal.style.display = 'none';
+  municipalitySelectionModal.style.display = 'block';
+  
+  // 選択ボタンを元に戻す
+  selectButton.disabled = false;
+  selectButton.textContent = '✅ この自治体で設定する';
+}
+
+// 全フィルタをクリア
+function clearAllFilters() {
+  if (confirm('全てのフィルタ設定をクリアしますか？')) {
+    document.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+      cb.checked = false;
+    });
+    updatePreview();
+  }
+}
+</script>
