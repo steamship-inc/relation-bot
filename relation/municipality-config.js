@@ -62,7 +62,7 @@ function loadMunicipalityConfigFromSheet(includeWithoutSlack) {
     };
   }
   
-  console.log('スプレッドシートから ' + Object.keys(configs).length + ' 件の受信箱設定を読み込みました');
+  console.log('📮受信箱シート読込完了(' + Object.keys(configs).length + '件)');
   
   return configs;
 }

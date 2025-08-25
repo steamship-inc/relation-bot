@@ -102,8 +102,6 @@ function manualSendSlack() {
  */
 function processSelectedMunicipality(municipalityCode) {
   try {
-    console.log('自治体選択処理開始: ' + municipalityCode);
-    
     // 全自治体設定を取得（フィルタ設定を含む）
     var configs = loadMunicipalityConfigFromSheet();
     var selectedConfig = configs[municipalityCode];
@@ -112,28 +110,18 @@ function processSelectedMunicipality(municipalityCode) {
       throw new Error('選択された自治体設定が見つかりません: ' + municipalityCode);
     }
     
-    // フィルタ設定のデバッグログ
+    // フィルタ設定のログ（簡潔版）
     if (selectedConfig.slackNotificationFilter) {
-      console.log(
-      '自治体: ' + selectedConfig.name +
-      ' / フィルタ設定: ' + JSON.stringify(selectedConfig.slackNotificationFilter) +
-      ' / フィルタ有効 - 条件に該当するチケットのみ送信します'
-      );
+      console.log('🏛️' + selectedConfig.name + ' ： フィルタ設定: ' + JSON.stringify(selectedConfig.slackNotificationFilter));
     } else {
-      console.log(
-      '自治体: ' + selectedConfig.name +
-      ' / フィルタ設定: なし / フィルタなし - 全チケットを送信します'
-      );
+      console.log('🏛️' + selectedConfig.name + ' ： フィルタ設定なし（全チケット送信）');
     }
-    
-    console.log('=== ' + selectedConfig.name + 'のopenチケット取得開始（シートから） ===');
     
     // 🎫未対応チケットシートから該当自治体のチケットを取得
     var tickets = getTicketsFromSheet(selectedConfig.messageBoxId);
     
     if (!tickets || tickets.length === 0) {
-      console.log('✅ 送信スキップ: 「' + selectedConfig.name + '」のopenチケットが見つかりません');
-      console.log('最新データを取得するため「🟩 re:lation」→「🎫未対応チケット取得」を実行してください');
+      console.log('⏭️ 送信スキップ: 「' + selectedConfig.name + '」のチケットなし');
       
       SpreadsheetApp.getUi().alert('送信スキップ', 
                                   '「' + selectedConfig.name + '」はチケットがないため、送信をスキップしました。\n\n' +
@@ -156,17 +144,11 @@ function processSelectedMunicipality(municipalityCode) {
     var filteredTickets = applySlackNotificationFilter(tickets, selectedConfig);
     var filteredCount = filteredTickets.length;
     
-    // 実際のチケットで通知送信（フィルタリング適用）
-    // sendSlackToMunicipality関数内でapplySlackNotificationFilter()が呼び出され、
-    // selectedConfig.slackNotificationFilterの設定に基づいてチケットがフィルタリングされます
-    console.log('=== Slack手動送信開始 ===');
-    console.log('対象自治体: ' + selectedConfig.name);
-    console.log('チケット件数（フィルタ適用前）: ' + originalCount);
-    console.log('チケット件数（フィルタ適用後）: ' + filteredCount);
-    console.log('送信先: ' + selectedConfig.slackChannel);
+    // フィルタ適用結果をログ出力
+    console.log('🎫チケットフィルタ適用(' + originalCount + '件→ ' + filteredCount + '件)');
     
     if (filteredCount === 0) {
-      console.log('✅ 送信スキップ: フィルタ条件に該当するチケットがありません');
+      console.log('⏭️ 送信スキップ: フィルタ条件に該当するチケットなし');
       return {
         success: true,
         reason: 'no_filtered_tickets',
@@ -192,7 +174,7 @@ function processSelectedMunicipality(municipalityCode) {
     };
     
   } catch (error) {
-    console.error('自治体選択処理エラー: ' + error.toString());
+    console.error('❌ 自治体選択処理エラー: ' + error.toString());
     SpreadsheetApp.getUi().alert('エラー', '処理に失敗しました: ' + error.toString(), SpreadsheetApp.getUi().ButtonSet.OK);
     throw error;
   }

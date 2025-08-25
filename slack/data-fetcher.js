@@ -33,6 +33,7 @@ function getTicketsFromSheet(messageBoxId) {
     var labelsMap = getLabelsMap(messageBoxId);
     
     var tickets = [];
+    var municipalityName = '';
     
     // データ行をループして該当自治体のチケットを抽出（6行目以降、0ベースで5以降）
     for (var i = 5; i < data.length; i++) {
@@ -40,6 +41,8 @@ function getTicketsFromSheet(messageBoxId) {
       
       // 受信箱IDが一致するかチェック（A列: 受信箱ID）
       if (row[0] === messageBoxId) {
+        if (!municipalityName) municipalityName = row[1]; // 自治体名を取得
+        
         // シートからIDを取得して名前に変換
         var caseCategoryIdsStr = row[8] && row[8].toString().trim() ? row[8].toString() : '';
         var labelIdsStr = row[9] && row[9].toString().trim() ? row[9].toString() : '';
@@ -71,10 +74,9 @@ function getTicketsFromSheet(messageBoxId) {
       }
     }
     
-    if (tickets.length > 0) {
-      console.log('自治体名: ' + tickets[0].municipality_name + ' のチケット件数（シートから）: ' + tickets.length);
-    } else {
-      console.log('該当するチケットがありません（受信箱ID: ' + messageBoxId + '）');
+    // 統合ログ出力
+    if (municipalityName) {
+      console.log('シート情報読込完了(🏛️' + municipalityName + '、🗂️チケット分類:' + Object.keys(caseCategoriesMap).length + '件 、🏷️ラベル' + Object.keys(labelsMap).length + '件)');
     }
     return tickets;
     
@@ -128,7 +130,7 @@ function getCaseCategoriesMap(messageBoxId) {
       }
     }
     
-    console.log('チケット分類マップ取得完了: ' + Object.keys(categoriesMap).length + '件');
+    // 詳細ログは削除し、必要時のみエラーログを出力
     return categoriesMap;
     
   } catch (error) {
@@ -181,7 +183,7 @@ function getLabelsMap(messageBoxId) {
       }
     }
     
-    console.log('ラベルマップ取得完了: ' + Object.keys(labelsMap).length + '件');
+    // 詳細ログは削除し、必要時のみエラーログを出力
     return labelsMap;
     
   } catch (error) {

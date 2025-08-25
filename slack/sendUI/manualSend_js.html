@@ -146,18 +146,17 @@
             showFilterResult(result);
           }
           
-          setTimeout(function() {
-            google.script.host.close();
-          }, 3000);
+          // モーダルを手動で閉じる必要がある場合のためのボタンを表示
+          showCloseButton();
         })
         .withFailureHandler(function(error) {
           console.error('processSelectedMunicipality失敗:', error);
           updateProgress('❌ エラー: ' + error, 'error');
           confirmBtn.disabled = false;
           confirmBtn.textContent = '「' + configs[selectedMunicipalityCode].name + '」に送信';
-          setTimeout(function() {
-            hideProgressDialog();
-          }, 5000);
+          
+          // エラー時も手動クローズボタンを表示
+          showCloseButton();
         })
         .processSelectedMunicipality(selectedMunicipalityCode);
     } else {
@@ -198,6 +197,23 @@
     
     var progressResult = document.getElementById('progressResult');
     progressResult.appendChild(filterResultDiv);
+  }
+
+  function showCloseButton() {
+    // 既存のクローズボタンがある場合は何もしない
+    if (document.getElementById('manualCloseBtn')) {
+      return;
+    }
+    
+    var closeButtonDiv = document.createElement('div');
+    closeButtonDiv.className = 'manual-close-section';
+    closeButtonDiv.innerHTML = 
+      '<button id="manualCloseBtn" class="btn btn-primary manual-close-btn" onclick="google.script.host.close()">' +
+        '閉じる' +
+      '</button>';
+    
+    var progressResult = document.getElementById('progressResult');
+    progressResult.appendChild(closeButtonDiv);
   }
 
   function showProgressDialog(municipalityName) {

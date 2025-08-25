@@ -31,7 +31,6 @@ function sendSlack(tickets, config) {
     };
   }
   
-  console.log('Bot Token使用: ' + config.slackChannel + ' に送信');
   return sendWithBotToken(tickets, config, slackBotToken);
 }
 
@@ -65,8 +64,6 @@ function sendWithBotToken(tickets, config, botToken) {
       channelType = '英語チャンネル名';
     }
   }
-  console.log('送信先タイプ: ' + channelType + ' / 送信先値: "' + channelName + '"');
-  
   // チャンネル名をそのまま使用して送信
   var result = attemptSlackSend(channelName, message, botToken, channelType);
   
@@ -139,48 +136,29 @@ function attemptSlackSend(channel, message, botToken, description) {
 }
 
 /**
- * レート制限を考慮したSlack通知送信（60自治体対応）
- * @param {Array} tickets チケット配列
- * @param {Object} config 自治体設定
- * @param {boolean} isLast 最後の送信かどうか
- */
-function sendSlackWithRateLimit(tickets, config, isLast) {
-  sendSlack(tickets, config);
-  
-  // 最後の送信でない場合は待機
-  if (!isLast) {
-    // Webhook: 1.1秒間隔（安全マージン込み）
-    // Bot Token: 1.5秒間隔（40回/分 = 安全）
-    Utilities.sleep(1500); // 1.5秒待機
-  }
-}
-
-/**
- * 自治体別Slack通知を送信（フィルタ条件適用）
+ * 自治体別Slack通知を送信（フィルタ条件適用・レート制限考慮）
  * @param {Array} tickets チケット配列
  * @param {Object} config 自治体設定
  * @param {boolean} isLast 最後の送信かどうか
  */
 function sendSlackToMunicipality(tickets, config, isLast) {
-  console.log(`自治体名: ${config.name} / Slackチャンネル: ${config.slackChannel} / チケット数（フィルタ前）: ${tickets.length}`);
   
   // Slack通知フィルタ条件を適用
   var filteredTickets = applySlackNotificationFilter(tickets, config);
   
-  console.log('チケット数（フィルタ後）: ' + filteredTickets.length);
-  console.log('フィルタ条件: ' + JSON.stringify(config.slackNotificationFilter));
-  
   // フィルタ条件に該当するチケットがある場合のみ通知
   if (filteredTickets.length > 0) {
-    sendSlackWithRateLimit(filteredTickets, config, isLast);
+    // 実際にSlack送信を実行
+    sendSlack(filteredTickets, config);
     console.log(config.name + ' へSlack通知送信: ' + filteredTickets.length + '件（フィルタ後）');
   } else {
     console.log(config.name + ' : Slack通知フィルタ条件に該当するチケットなし');
-    
-    // チケットがない場合も最後でなければ待機
-    if (!isLast) {
-      Utilities.sleep(1500);
-    }
+  }
+  
+  // 最後の送信でない場合は待機（レート制限対応）
+  if (!isLast) {
+    // Bot Token: 1.5秒間隔（40回/分 = 安全マージン込み）
+    Utilities.sleep(1500);
   }
 }
 
@@ -196,7 +174,6 @@ function applySlackNotificationFilter(tickets, config) {
   
   if (!filterConditions) {
     // フィルタ条件が設定されていない場合は全チケットを対象
-    console.log('フィルタ条件なし - 全チケット対象');
     return tickets;
   }
   
@@ -208,7 +185,6 @@ function applySlackNotificationFilter(tickets, config) {
       var hasIncludeLabel = filterConditions.include_label_ids.some(function(labelId) {
         return ticket.label_ids && ticket.label_ids.includes(labelId);
       });
-      // console.log('ラベルフィルタ結果: ' + hasIncludeLabel + ' (必要: ' + JSON.stringify(filterConditions.include_label_ids) + ')');
       if (!hasIncludeLabel) shouldNotify = false;
     }
     
@@ -217,13 +193,11 @@ function applySlackNotificationFilter(tickets, config) {
       var hasIncludeCategory = filterConditions.include_case_category_ids.some(function(categoryId) {
         return ticket.case_category_ids && ticket.case_category_ids.includes(categoryId);
       });
-     // console.log('分類フィルタ結果: ' + hasIncludeCategory + ' (必要: ' + JSON.stringify(filterConditions.include_case_category_ids) + ')');
       if (!hasIncludeCategory) shouldNotify = false;
     }
     
     return shouldNotify;
   });
-  
   
   return filteredTickets;
 }
